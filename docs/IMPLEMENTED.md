@@ -481,3 +481,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** a move alone adds no history version; Public custom data (the KDBX 4 header's) and unknown XML of the database stay A's, as they describe A's file. Neither is in the plan's task list; both are now in SPEC §10.
 
+## 7.3 Plan validation
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-7.3-validate
+- **Summary:** `merge.Validate(plan)` checks that a plan can be applied: a choice for every change (`PlanIncomplete`), each one its kind allows (`PlanInvalidChoice`), and no dropped group holding a kept item (`PlanGroupNotEmpty`, naming the group and the first such item with their UUIDs, paths and titles, and how many items are in the way). `merge.Conflicts(plan)` lists all of them (the dropped group's change and the kept item's change), which the GUI uses to offer "drop everything in this group" and the interactive CLI for its follow-up question. Where an item would sit follows the copy the plan takes (`take-a` A's place, `take-b` B's, `both` both). `Apply` checks the plan against the databases (`PlanMismatch`) and then validates it.
+- **Main files:** internal/core/merge/validate.go.
+- **Tests:** the four rules over 40 related pairs always validate; each failure with its route (also through `Apply`); 14 group cases (entries and subgroups kept in dropped groups of A and of B, dropped subgroups, `take-a`/`take-b`/`both` leaving or staying, deleted entries kept, paired groups never in the way); dropping the listed items repeatedly makes a plan valid and the merge then applies; the error metadata names the group and item.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the plan's wording "naming the group and one kept item" is met with UUIDs plus path and title in the metadata (a title is not a secret, but the CLI prints UUIDs and paths only when the user asks with `--debug`).
+

@@ -17,10 +17,16 @@ import (
 // and a and b are not changed. The result shares nothing with them, so wiping it
 // never wipes an input.
 //
-// The plan must be valid (see Validate): a group that is dropped holds nothing
-// that is kept.
+// The plan must fit the databases (PlanMismatch) and be valid (see Validate).
 func Apply(a, b *model.Database, p *plan.Plan) (*model.Database, error) {
-	return apply(a, b, p)
+	changes := diff.Changes(a, b)
+	if err := sameChanges(changes, p); err != nil {
+		return nil, err
+	}
+	if err := Validate(p); err != nil {
+		return nil, err
+	}
+	return build(a, b, changes, p)
 }
 
 // apply is Apply without the validation, so that a test can give it a plan that
@@ -30,6 +36,11 @@ func apply(a, b *model.Database, p *plan.Plan) (*model.Database, error) {
 	if err := sameChanges(changes, p); err != nil {
 		return nil, err
 	}
+	return build(a, b, changes, p)
+}
+
+// build makes the result from a plan that fits the changes.
+func build(a, b *model.Database, changes []diff.Change, p *plan.Plan) (*model.Database, error) {
 	bd := newBuilder(a, b)
 	if err := bd.run(changes, p.Choices); err != nil {
 		bd.res.Wipe()
