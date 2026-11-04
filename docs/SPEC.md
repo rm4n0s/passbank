@@ -152,9 +152,10 @@ Established in step 3.1 from the sources below, in Passbank's own words. Behavio
 - **Fresh secrets**: seeds, IVs and the inner stream key are new random values from `crypto/rand` on every write
 - **Safe writing**:
   - the output is written to a temporary file in the target folder with mode `0600`, synced, and renamed into place, and then the folder is synced
+  - without that request the file is put in place by a hard link that fails if the path exists, so that a file made by someone else in the meantime is never replaced
   - an existing output file is replaced only when the user explicitly asked for it: `--force` in the CLI, or the save dialog's overwrite confirmation in the GUI
   - the output may never be the same file as A or B (checked with `os.SameFile`, also with `--force`): `OutputIsInput`
-- **Verification after writing**: Passbank reads the written file back with the same credentials and compares its model with the result it meant to write. A mismatch is `WriteVerifyFailed`; the file is removed, and the error is a bug to fix
+- **Verification after writing**: Passbank reads the temporary file back with the same credentials, before it is put in place, and compares its model with the result it meant to write (as the chosen version holds it). A file that fails the check never reaches the output path, and an existing file there is untouched. A mismatch is `WriteVerifyFailed`; the temporary file is removed, and the error is a bug to fix
 
 ## 6. Data model
 
@@ -406,6 +407,7 @@ Each failure has a Tag (see CLAUDE.md, "Error handling") and a message for the u
 | `OutputIsInput` | "The output must be a new file, not one of the inputs" |
 | `PasswordNeedsTerminal`, `PasswordsDoNotMatch`, `PasswordFileTooOpen` | |
 | `WriteVerifyFailed` | "The written file did not read back correctly and was removed" (a bug) |
+| `OutputPathInvalid`, `OutputTempFailed`, `OutputWriteFailed`, `OutputPlaceFailed`, `OutputSyncFailed`, `WriteCancelled` | "<out> cannot be written: <cause>"; nothing is left behind, except that after `OutputSyncFailed` the file is in place and complete but may not survive a crash |
 
 ## 16. Packages
 

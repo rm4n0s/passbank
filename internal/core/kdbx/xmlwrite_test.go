@@ -46,39 +46,6 @@ func roundTripXML(t *testing.T, db *model.Database, version Version, compress bo
 	return got, string(xmlBytes)
 }
 
-// strip41 removes the fields that only KDBX 4.1 stores.
-func strip41(db *model.Database) *model.Database {
-	db = db.Clone()
-	db.Meta.SettingsChanged = time.Time{}
-	for i := range db.Meta.CustomIcons {
-		db.Meta.CustomIcons[i].Name, db.Meta.CustomIcons[i].LastModified = "", time.Time{}
-	}
-	for i := range db.Meta.CustomData {
-		db.Meta.CustomData[i].LastModified = time.Time{}
-	}
-	var fixEntry func(e *model.Entry)
-	fixEntry = func(e *model.Entry) {
-		e.QualityCheck, e.PreviousParent = nil, model.UUID{}
-		for i := range e.CustomData {
-			e.CustomData[i].LastModified = time.Time{}
-		}
-		for _, h := range e.History {
-			fixEntry(h)
-		}
-	}
-	db.WalkGroups(func(g *model.Group) bool {
-		g.Tags, g.PreviousParent = nil, model.UUID{}
-		for i := range g.CustomData {
-			g.CustomData[i].LastModified = time.Time{}
-		}
-		for _, e := range g.Entries {
-			fixEntry(e)
-		}
-		return true
-	})
-	return db
-}
-
 func TestXMLWriterRoundTripOfFixtures(t *testing.T) {
 	for _, tt := range []struct {
 		file, password, keyFile string
@@ -109,7 +76,7 @@ func TestXMLWriterRoundTripOfFixtures(t *testing.T) {
 			}
 			// KDBX 4.0: everything but the 4.1 fields.
 			got, _ = roundTripXML(t, db, Version{4, 0}, false)
-			if diff := model.Diff(strip41(db), got); len(diff) != 0 {
+			if diff := model.Diff(Fit(db, Version{4, 0}), got); len(diff) != 0 {
 				t.Errorf("4.0 round trip:\n%s", strings.Join(diff, "\n"))
 			}
 			// KDBX 3.1 and 3.0: everything but the 4.1 fields and the custom data of
@@ -117,7 +84,7 @@ func TestXMLWriterRoundTripOfFixtures(t *testing.T) {
 			for _, v := range []Version{{3, 1}, {3, 0}, {2, 0}} {
 				for _, compress := range []bool{false, true} {
 					got, _ = roundTripXML(t, db, v, compress)
-					if diff := model.Diff(strip41(db), got); len(diff) != 0 {
+					if diff := model.Diff(Fit(db, Version{4, 0}), got); len(diff) != 0 {
 						t.Errorf("%s (compressed %v) round trip:\n%s", v, compress, strings.Join(diff, "\n"))
 					}
 				}

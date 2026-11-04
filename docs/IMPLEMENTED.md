@@ -316,3 +316,19 @@ history          2
   - `Encode` writes only KDBX 4 until step 5.2 adds the old container; other versions give `VersionUnsupported`.
   - A database with an empty `Meta.Generator` is written with the generator `Passbank`, so it does not read back equal; the merge sets the generator.
 
+## 4.3 Safe output
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-4.3-safe-output
+- **Summary:** `output.Write(ctx, path, db, version, settings, creds, opts)` encodes the database, writes it to a temporary file in the folder of the path (mode 0600, synced), reads that file back with the same credentials and requires it to equal the database as the version holds it (`kdbx.Fit`), and only then puts it in place, by a hard link that fails if the path exists (or by a rename with `Overwrite`), and syncs the folder. `OutputExists` without `Overwrite`; `OutputIsInput` when the path is any of `Inputs` by `os.SameFile`, so also through links and other spellings, also with `Overwrite`. No temporary file is left behind and an existing file is unchanged by any failure before it is replaced. The file system is an interface (`output.FS`) so that every step can be made to fail.
+- **Main files:** internal/core/output/{output,fs}.go, internal/core/kdbx/fit.go (`Fit`: the database as a version holds it).
+- **Tests:** a new file (content, mode 0600, no other file in the folder); an existing file is refused and unchanged, then replaced with `Overwrite`; eight cases of `OutputIsInput` (same path, spelling, `..`, symbolic and hard links, either input, with and without `Overwrite`) and inputs that do not matter; empty path, missing folder, a folder at the path; encoding errors; seven injected faults (create, write, sync, close, link, removing the temporary name, syncing the folder) each with its route, with the folder checked and, for the six that fail before the file is in place, the same fault over an existing file leaving it unchanged; a file made by someone else between the check and the link survives; verification: a flipped bit in what is written, and a database that differs (the metadata names paths and UUIDs only, never values), cancellation during the verification; `Write` does not change the database or the credentials, and a 4.0 file of a 4.1 database holds no 4.1 field.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - The plan verified the file at its final path and removed it on a mismatch; this verifies the temporary file before it is placed, so a bad file never appears at the path and an existing file is never replaced by one.
+  - `Write` reports `WriteCancelled` for a cancellation during the verification, not `WriteVerifyFailed`.
+  - After `OutputSyncFailed` the file is in place and complete (SPEC §15 says so).
+
