@@ -294,7 +294,9 @@ settings take-a
   - a missing change is `PlanIncomplete`
   - an item that is not a change of these inputs is `PlanUnknownItem`
   - a choice the kind doesn't allow is `PlanInvalidChoice`
-  - a malformed line is `PlanSyntax`, with its line number
+  - an item with more than one line is `PlanDuplicateItem`
+  - a malformed line is `PlanSyntax`, with its line number. Lines can be at most 1 MiB; the first line must be the format line (a UTF-8 byte order mark before it is accepted); CRLF line endings are accepted
+  - the settings line may be written `settings <choice>` or `<choice> settings`
 - **Secrets**: the file never contains passwords or other field values. Group paths and titles appear only in comments, and the CLI's `--no-titles` leaves them out, because titles can be sensitive
 
 ## 12. Command-line tool (`passbank`)
@@ -404,7 +406,8 @@ Each failure has a Tag (see CLAUDE.md, "Error handling") and a message for the u
 | `KeyFileCorrupt` | "The key file <path> is damaged (its checksum does not match)" |
 | `FileCorrupt` | "<file> is damaged: <where>" |
 | `FileReadFailed`, `FileTooLarge`, `ReadCancelled` | "<file> cannot be read: <cause>"; "<file> is larger than 2 GiB"; "reading was cancelled" |
-| `PlanStale`, `PlanIncomplete`, `PlanUnknownItem`, `PlanInvalidChoice`, `PlanSyntax`, `PlanGroupNotEmpty` | what is wrong, with the line or item |
+| `PlanStale`, `PlanIncomplete`, `PlanUnknownItem`, `PlanInvalidChoice`, `PlanDuplicateItem`, `PlanSyntax`, `PlanGroupNotEmpty` | what is wrong, with the line or item |
+| `PlanReadFailed`, `PlanWriteFailed`, `PlanInconsistent` | "the plan cannot be read or written: <cause>"; `PlanInconsistent` is a bug (a plan with a different number of choices and changes) |
 | `ChoicesNeedTerminal` | "There is no terminal to ask for choices; use --plan or --prefer" |
 | `OutputExists` | "<out> exists; use --force to replace it" |
 | `OutputVersionLosesData` | "KDBX <v> cannot store <what> of <n> items; choose KDBX 4 or accept the loss" |

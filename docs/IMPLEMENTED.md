@@ -429,3 +429,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** `Set` reports a bool instead of an error, so it needs no error tag; `plan.Validate` (7.3) and the plan file (6.4) report errors. Rule `a` on a deletion follows A's state (`deleted-in-a` drops, `deleted-in-b` keeps) and `union` leaves deletions, group changes and settings at the defaults, as §9 says.
 
+## 6.4 The plan file
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-6.4-plan-file
+- **Summary:** `plan.Write(w, p, WriteOptions{NoTitles})` writes the plan file of SPEC §11 (format line, the `a` and `b` lines with SHA-256 and name, a comment above each change that names its kind, the differing fields and both modification times, and a trailing `# path / title` comment), and `plan.Read(r, a, b, changes)` reads it back for the given inputs and changes. The file never holds a field value. Comments are cleaned of line breaks and other control characters and of invalid UTF-8, so a hostile title cannot start a new line. With `NoTitles` the group paths, titles and custom field names are left out.
+- **Main files:** internal/core/plan/file.go.
+- **Tests:** a golden plan text of one change of every kind; write then read gives the same choices for ten titles (spaces, tabs, `#`, a leading `#`, non-ASCII and emoji, line breaks, CR, NUL, invalid UTF-8, 10 KB) with and without `NoTitles`; files that must read (CRLF, comments and blank lines everywhere, upper-case UUIDs, the settings word first or second, a byte order mark, no line break at the end, any names of the inputs); 26 files that must fail with their route and line number (`PlanSyntax` 17 ways, `PlanStale` for A and B, `PlanUnknownItem`, `PlanInvalidChoice`, `PlanDuplicateItem`, `PlanIncomplete`); a failing reader, a failing writer and an inconsistent plan; a fuzz target for `Read` (seeds in every run, plus 20 s of fuzzing with `-parallel 1` and `GOMEMLIMIT=2GiB`).
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** four tags are new in SPEC §15: `PlanDuplicateItem` (an item with two lines), `PlanReadFailed`, `PlanWriteFailed` and `PlanInconsistent`. The first line must be the format line exactly (no blank line or comment before it). Names of the inputs in the header are not compared, only the hashes (a file may be renamed).
+
