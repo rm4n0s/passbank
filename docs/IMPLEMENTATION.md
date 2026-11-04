@@ -245,7 +245,7 @@ Every **Proof** item gives its exact command.
 **Goal:** `internal/core/kdbx/crypto` credentials, as SPEC §4.2 describes.
 **Read:** SPEC §4.2; KeePass's `KcpKeyFile.cs` and `CompositeKey.cs`.
 **Tasks:**
-1. `Credentials{Password secret.Bytes; HasPassword bool; KeyFile []byte}` and `CompositeKey(ctx, Credentials) (secret.Bytes, error)`.
+1. `Credentials{HasPassword, Password, HasKeyFile, KeyFile}` and `CompositeKey(Credentials) (secret.Bytes, error)` (no `ctx`: it does no I/O), and `ReadKeyFile(ctx, path)`, which reads a key file up to 64 MiB.
 2. Key-file loading in KeePass's order:
    - XML 1.0 and 2.0 (verifying the 2.0 `Hash`: `KeyFileCorrupt`)
    - 32 raw bytes

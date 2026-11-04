@@ -117,3 +117,20 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
   - `CipherInitFailed` is listed in docs/ERROR-TAGS-UNTESTED.md: the sizes are checked before every constructor, so it cannot be reached.
   - Argon2 cannot be interrupted: on cancellation the call returns at once and the computation finishes in the background (at most a few seconds, 4 GiB at the very most).
   - The AES-KDF and Argon2 results are checked against independent code for the algorithms, but the full path (a real KDBX file) is checked only when the fixtures of step 2.4 exist.
+
+## 2.3 Key files and the composite key
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-2.3-key-files
+- **Summary:** `crypto.CompositeKey` makes the 32-byte composite key from a password, a key file, or both, as KeePass does (SHA-256 of the 32-byte components in that order). Key files are read in KeePass's order: XML 1.x (base64) and XML 2.x (64 hex digits, whitespace allowed, the 4-byte `Hash` checked), then a 32-byte file as it is, a 64-hex-digit file as the key it spells, and any other file hashed. `crypto.ReadKeyFile` reads a key file from disk, at most 64 MiB.
+- **Main files:** internal/core/kdbx/crypto/{credentials,keyfile}.go.
+- **Tests:** expected keys computed with Python's hashlib (password only, empty password, raw key file, hex key file in both cases, hashed key file, password plus each kind, XML 1.0 and 2.0 in several spellings, another XML root read as a plain file); eleven damaged XML key files, each `KeyFileCorrupt` (bad base64, empty key, wrong, missing, short and non-hex hash, short and non-hex key, unknown and missing version, truncated document); `NoCredentials`; `ReadKeyFile` for a missing file, a folder, a cancelled context, a file of exactly 64 MiB (a sparse file) and one byte more; Wipe.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - `CompositeKey` takes no `ctx` (the plan said it would): it does no I/O. `Credentials` has explicit `HasPassword` and `HasKeyFile` flags, so an empty password can be a component (KeePass) or absent (KeePassXC's reading of an empty field); the callers choose.
+  - As in KeePass, a password and a hashed key file with the same text give the same key; the test says so.
+  - An XML key file whose root is `KeyFile` and which is damaged inside is an error, not a hashed file, because no other program would read it as one; a document with another root, or a file that is not XML, follows the binary rules. XML in other encodings than UTF-8 is read as a binary file.
+  - The behavior of KeePass for an XML 1.0 key whose base64 does not decode to 32 bytes is not documented; Passbank uses the decoded bytes as they are, like KeePass's reader does, and rejects only an empty or invalid one. A real KeePass-made file will confirm this in step 2.5's tests.
