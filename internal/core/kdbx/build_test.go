@@ -3,6 +3,7 @@ package kdbx
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
@@ -86,7 +87,7 @@ func innerHeaderBytes(streamKey []byte, binaries ...[]byte) []byte {
 }
 
 // build makes the file.
-func (b build4) build(t *testing.T) []byte {
+func (b build4) build(t testing.TB) []byte {
 	t.Helper()
 	cipherID := b.Cipher
 	if cipherID.IsZero() {
@@ -140,7 +141,7 @@ func (b build4) build(t *testing.T) []byte {
 			t.Fatal(err)
 		}
 	}
-	transformed, err := kdf.Derive(t.Context(), composite.Reveal())
+	transformed, err := kdf.Derive(context.Background(), composite.Reveal())
 	if err != nil {
 		t.Fatal(err)
 	}

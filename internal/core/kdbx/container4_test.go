@@ -34,7 +34,7 @@ func assertRoute(t *testing.T, err error, route string) {
 func secretOf(s string) secret.Bytes { return secret.New([]byte(s)) }
 
 // fixtureCreds are the credentials of a fixture, as FIXTURES.md lists them.
-func fixtureCreds(t *testing.T, password, keyFile string) secret.Bytes {
+func fixtureCreds(t testing.TB, password, keyFile string) secret.Bytes {
 	t.Helper()
 	var c crypto.Credentials
 	if password != "" {
@@ -50,7 +50,7 @@ func fixtureCreds(t *testing.T, password, keyFile string) secret.Bytes {
 	return key
 }
 
-func readFile(t *testing.T, path string) []byte {
+func readFile(t testing.TB, path string) []byte {
 	t.Helper()
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -60,7 +60,7 @@ func readFile(t *testing.T, path string) []byte {
 }
 
 // fixtureFile reads a fixture.
-func fixtureFile(t *testing.T, name string) []byte {
+func fixtureFile(t testing.TB, name string) []byte {
 	t.Helper()
 	return readFile(t, testenv.Fixture(t, name))
 }

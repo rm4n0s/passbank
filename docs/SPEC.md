@@ -373,6 +373,7 @@ Each failure has a Tag (see CLAUDE.md, "Error handling") and a message for the u
 | `WrongCredentials` | "The password or key file for <file> is wrong" |
 | `KeyFileCorrupt` | "The key file <path> is damaged (its checksum does not match)" |
 | `FileCorrupt` | "<file> is damaged: <where>" |
+| `FileReadFailed`, `FileTooLarge`, `ReadCancelled` | "<file> cannot be read: <cause>"; "<file> is larger than 2 GiB"; "reading was cancelled" |
 | `PlanStale`, `PlanIncomplete`, `PlanUnknownItem`, `PlanInvalidChoice`, `PlanSyntax`, `PlanGroupNotEmpty` | what is wrong, with the line or item |
 | `ChoicesNeedTerminal` | "There is no terminal to ask for choices; use --plan or --prefer" |
 | `OutputExists` | "<out> exists; use --force to replace it" |
@@ -389,9 +390,8 @@ cmd/passbank/              CLI main
 cmd/passbank-gui/          GUI main
 internal/core/secret/      secret byte buffers
 internal/core/model/       data model (section 6)
-internal/core/kdbx/        file container: signature, headers, block streams, compression, inner stream
+internal/core/kdbx/        file container: signature, headers, block streams, compression, inner stream; XML <-> model, raw-XML preservation, time formats
 internal/core/kdbx/crypto/ ciphers, KDFs, composite key, key files
-internal/core/kdbx/xml/    XML <-> model, raw-XML preservation, time formats
 internal/core/diff/        matching and comparison -> changes (sections 7, 8)
 internal/core/plan/        choices, rules, plan file (sections 9, 11)
 internal/core/merge/       applying a plan -> result model (section 10)

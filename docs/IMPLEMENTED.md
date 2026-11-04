@@ -187,3 +187,20 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
   - Unknown elements inside `Times`, `MemoryProtection`, `AutoType`, icons, custom data items, `String` and deleted objects are dropped (no raw XML on those parts of the model); SPEC §4.4 says so.
   - The order of groups relative to entries inside a group is not kept (the model keeps two lists); KeePass writes entries first.
 
+## 2.7 Opening a database
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-2.7-open
+- **Summary:** `kdbx.Open(ctx, path, creds)` and `kdbx.OpenBytes(ctx, data, creds)` read a database file to a `model.Database` and an `Info` (version, cipher, KDF with its parameters, compression, inner stream, counts of groups, entries, history items and attachments). The file is read once, at most 2 GiB. KDBX 2.x and 3.x give `VersionUnsupported` until milestone 3. `ctx` is looked at before reading, in the key derivation, between the derivation and the parsing, and every 1,024 XML tokens. Seven fuzz targets (header, VariantDictionary, inner header, block stream, gzip, XML, and `OpenBytes`) run their seeds in every test run.
+- **Main files:** internal/core/kdbx/open.go, fuzz_test.go.
+- **Tests:** every KDBX 4 fixture through `Open` with the expected `Info` and the rich content; the KDF parameters; a missing file, a folder, a text file, a wrong password, no credentials, a key file missing, a KDBX 3 file; KDBX 1, 5, KeePass 1 and pre-release signatures; the file is unchanged after `Open`; the file size limit; cancellation before reading and at every look at the context (`KdfCancelled` and `ReadCancelled` both occur, nothing else); about 12 s of fuzzing per target (`-parallel 1`, `GOMEMLIMIT=2GiB`) found nothing.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - SPEC §16 listed a package `internal/core/kdbx/xml`; the XML code is in `internal/core/kdbx` because it needs the container's types, and the empty package was removed. SPEC §16 is changed.
+  - New tags `FileReadFailed`, `FileTooLarge` and `ReadCancelled` (SPEC §15), each with a route test.
+  - `Open` takes `crypto.Credentials` (the key file content as a secret, not a path); the CLI reads the key file with `crypto.ReadKeyFile`.
+  - Go's fuzzer spends most of the first half minute minimizing the 10 KB XML seeds of `FuzzParseXML4`; use `-fuzzminimizetime 2s` for short runs.
+

@@ -24,7 +24,8 @@ func buildKey(t *testing.T, password string) secret.Bytes {
 	return key
 }
 
-const buildXML = `<?xml version="1.0"?><KeePassFile><Meta/><Root/></KeePassFile>`
+// buildXML is a database with a root group and nothing else.
+const buildXML = `<?xml version="1.0"?><KeePassFile><Meta/><Root><Group><UUID>AAAAAAAAAAAAAAAAAAAAAQ==</UUID></Group></Root></KeePassFile>`
 
 // goodPayload is an inner header with the given binaries and a small XML.
 func goodPayload(binaries ...[]byte) []byte {
