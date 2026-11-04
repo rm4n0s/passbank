@@ -455,3 +455,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** the plan header names the inputs by the base name of their files. A usage error is reported before `--debug` is known, so it shows no tag. Three tags are new in SPEC §15: `PlanFileExists`, `PlanFileWriteFailed` and `PlanOutputIsInput`.
 
+## 7.1 Building the result tree
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-7.1-result-tree
+- **Summary:** `merge.Apply(a, b, plan)` builds the tree of the merged database as SPEC §10.1 says: it starts from a deep copy of A, creates the groups only B has and the plan keeps (below their parents, parents first), applies `group-differs` (B's properties, and B's parent when it differs), then each entry choice (`keep`/`drop`, `take-a`, `take-b`, `both`, `drop`; B's entries go to the result's group for B's group, appended after A's; a `take-b` in the same group keeps A's place; `both` adds B's copy with a UUID derived from the entry's UUID, also on its history), and last removes the dropped groups with what is in them. Roots and recycle bins with different UUIDs are one group. The plan must be valid; `Validate` arrives in 7.3. `diff.Change.Parent` now also holds the parent of a group on each side.
+- **Main files:** internal/core/merge/apply.go.
+- **Tests:** 23 tables (one per choice and kind, nested new groups with their ancestors, dropped groups, moved entries and groups, `take-b` in place, `both`, the bins and roots with different UUIDs); the errors with routes (`MergeGroupCycle`, `PlanMismatch` for other databases and for a missing choice, `PlanGroupNotEmpty` from a kept entry in a dropped group); 40 related random pairs (copies edited in B: changed, deleted, moved, renamed, added, with deletions on both sides and changed settings; every kind occurs) under the rules `a` and `b` (the result has exactly the groups and entries of that input, each where it has them), `newer` and `union` (no UUID twice, nothing new but the copies, union loses nothing); the inputs unchanged after every rule and after wiping the result; two applications give equal results; the copy's UUID is version 4 and avoids used UUIDs.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** History, deleted objects, Meta and attachments are 7.2. Two tags are new in SPEC §15: `PlanMismatch` and `MergeGroupCycle`. A kept group is created even when everything in it is dropped (SPEC §10.1 now says so).
+

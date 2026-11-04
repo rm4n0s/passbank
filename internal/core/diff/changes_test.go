@@ -382,3 +382,27 @@ func TestKindNames(t *testing.T) {
 		t.Error("unknown kind")
 	}
 }
+
+func TestGroupChangesHaveTheirParents(t *testing.T) {
+	a := database(grp(1, "Root", grp(2, "Mail", grp(3, "Deep")), grp(4, "OnlyA")), 0)
+	b := database(grp(1, "Root", grp(2, "Mail"), grp(3, "Deep"), grp(5, "OnlyB", grp(6, "Inner"))), 0)
+	byUUID := map[byte]Change{}
+	for _, c := range Changes(a, b) {
+		byUUID[c.UUID[15]] = c
+	}
+	parent := func(c Change, s Side) byte {
+		if c.Parent[s] == nil {
+			return 0
+		}
+		return c.Parent[s].UUID[15]
+	}
+	if c := byUUID[4]; c.Kind != OnlyA || parent(c, SideA) != 1 || c.Parent[SideB] != nil {
+		t.Errorf("only-a group: %+v", c)
+	}
+	if c := byUUID[6]; c.Kind != OnlyB || parent(c, SideB) != 5 || c.Parent[SideA] != nil {
+		t.Errorf("only-b inner group: %+v", c)
+	}
+	if c := byUUID[3]; c.Kind != GroupDiffers || parent(c, SideA) != 2 || parent(c, SideB) != 1 {
+		t.Errorf("moved group: %+v", c)
+	}
+}

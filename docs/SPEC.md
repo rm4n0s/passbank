@@ -244,7 +244,12 @@ The result's tree starts as A's tree, with every item's position following the c
 - an entry taken from B goes to the group B had it in
 - a group that doesn't exist in the result yet is created, with its ancestors, from the input it came from
 
-The order of children follows the chosen input; items from the other input are appended after them in their own order.
+The order of children follows the chosen input; items from the other input are appended after them in their own order. An entry taken from B in place of A's, in the same group, keeps A's place.
+
+- A group that only one input has and the plan keeps is created, even when it ends up empty
+- **`both`**: B's copy gets a UUID that is derived from the entry's UUID (it looks like a random version 4 UUID, is not any UUID of the inputs, and is the same on every run), so that the merge stays a pure function. The versions in its history get the same UUID
+- A choice that would put a group inside itself or one of its descendants (A has X in Y, B has Y in X, and the user takes B's place for both) is `MergeGroupCycle`; the user takes A's place for one of them
+- A plan made for other databases than the ones given is `PlanMismatch`
 
 ### 10.2 History
 
@@ -407,6 +412,7 @@ Each failure has a Tag (see CLAUDE.md, "Error handling") and a message for the u
 | `FileCorrupt` | "<file> is damaged: <where>" |
 | `FileReadFailed`, `FileTooLarge`, `ReadCancelled` | "<file> cannot be read: <cause>"; "<file> is larger than 2 GiB"; "reading was cancelled" |
 | `PlanStale`, `PlanIncomplete`, `PlanUnknownItem`, `PlanInvalidChoice`, `PlanDuplicateItem`, `PlanSyntax`, `PlanGroupNotEmpty` | what is wrong, with the line or item |
+| `PlanMismatch`, `MergeGroupCycle` | "the plan was not made for these databases"; "the choices would put <group> inside itself; take the place of one of the groups from A" |
 | `PlanReadFailed`, `PlanWriteFailed`, `PlanInconsistent` | "the plan cannot be read or written: <cause>"; `PlanInconsistent` is a bug (a plan with a different number of choices and changes) |
 | `PlanFileExists`, `PlanFileWriteFailed`, `PlanOutputIsInput` | "<plan> exists; use --force to replace it"; "<plan> cannot be written: <cause>"; "the plan file must not be one of the databases" |
 | `ChoicesNeedTerminal` | "There is no terminal to ask for choices; use --plan or --prefer" |

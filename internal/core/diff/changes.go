@@ -71,9 +71,11 @@ type Change struct {
 	Item Item
 	// UUID is the UUID of the entry or group; zero for Settings.
 	UUID model.UUID
-	// Entry holds the entry on each side, nil where it does not exist. Parent holds
-	// the group that holds it on that side. Both are nil for groups and Settings.
-	Entry  [2]*model.Entry
+	// Entry holds the entry on each side, nil where it does not exist; nil for
+	// groups and Settings.
+	Entry [2]*model.Entry
+	// Parent holds the group that holds the entry, or the group that is the parent
+	// of the group, on each side; nil where the item does not exist (and for a root).
 	Parent [2]*model.Group
 	// Group holds the group on each side, for group changes; nil otherwise.
 	Group [2]*model.Group
@@ -122,13 +124,13 @@ func Changes(a, b *model.Database) []Change {
 	}
 	for _, g := range m.OnlyAGroups {
 		c := Change{Kind: OnlyA, Item: ItemGroup, UUID: g.UUID}
-		c.Group[SideA] = g
+		c.Group[SideA], c.Parent[SideA] = g, ta.Parent(g)
 		c.Modified[SideA] = g.Times.LastModification
 		out = append(out, c)
 	}
 	for _, g := range m.OnlyBGroups {
 		c := Change{Kind: OnlyB, Item: ItemGroup, UUID: g.UUID}
-		c.Group[SideB] = g
+		c.Group[SideB], c.Parent[SideB] = g, tb.Parent(g)
 		c.Modified[SideB] = g.Times.LastModification
 		out = append(out, c)
 	}
@@ -156,6 +158,7 @@ func Changes(a, b *model.Database) []Change {
 		}
 		c := Change{Kind: GroupDiffers, Item: ItemGroup, UUID: p.A.UUID, Fields: fields}
 		c.Group = [2]*model.Group{p.A, p.B}
+		c.Parent = [2]*model.Group{ta.Parent(p.A), tb.Parent(p.B)}
 		c.Modified = [2]time.Time{p.A.Times.LastModification, p.B.Times.LastModification}
 		out = append(out, c)
 	}
