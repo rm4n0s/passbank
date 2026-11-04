@@ -180,7 +180,7 @@ Every **Proof** item gives its exact command.
 **Goal:** `internal/testenv`, `internal/core/secret`, and `scripts/error-tags.sh`.
 **Read:** SPEC §14, §15; CLAUDE.md "Error handling".
 **Tasks:**
-1. `go get github.com/rm4n0s/errors@latest`. Read its `AI_GUIDE.md` in the module cache.
+1. `github.com/rm4n0s/errors` is already in `go.mod` (step 1.2 needed it for `archtest`). Read its `AI_GUIDE.md` in the module cache.
 2. `testenv.Isolate(t)`: sets every `XDG_*` variable and `HOME` to folders under `t.TempDir()` with `t.Setenv`. `testenv.Fixture(t, name)` returns the path of a file under the calling package's `testdata/`, and fails the test if it is missing.
 3. `internal/core/secret`: a `Bytes` type that holds secret data, with `Wipe()` (zeroing), `Equal` (constant time, `crypto/subtle`), and a `String()` / `LogValue()` that print `[secret]`, so a secret can't be printed or logged by accident. `FromTerminal`-style constructors come later; this step needs only `New([]byte)` (which takes ownership) and `Clone`.
 4. `scripts/error-tags.sh [--untested]`:
@@ -202,7 +202,7 @@ Every **Proof** item gives its exact command.
    - keep the NVIDIA rule of `gpu-env.sh` exactly (CLAUDE.md "Testing notes")
 3. Fonts: the Go fonts (`golang.org/x/image/font/gofont/goregular`, `gobold`, `gomono`, already brought in by Glutter) are embedded through `internal/gui/kit/fonts` (`Sources()` for `RunAppOpts.Fonts`; family-name constants). The app and the tests use only these; `internal/gui/testutil` loads them in `gluttertest`.
 4. `internal/gui/app.Run(ctx)`: `widgets.RunApp` with `AppID: "dev.rm4n0s.Passbank"`, title "Passbank", size 1100×720, the fonts, and a home that shows "Passbank" centered on the app's background color. `cmd/passbank-gui` parses `--version` and `--help` and calls it.
-5. `internal/cli.Main(ctx, args, stdin, stdout, stderr, term) int`: command dispatch with `--version`, `--help` and usage errors (exit 2, SPEC §12). `term` is an interface for the terminal (is it one, read a line without echo), so tests use a fake. `cmd/passbank` calls it with the real terminal (`golang.org/x/term` on `/dev/tty`).
+5. `internal/cli.Main(ctx, args, stdin, stdout, stderr, term) int`: command dispatch with `--version`, `--help` and usage errors (exit 2, SPEC §12). `term` is an interface for the terminal (is it one, read a line without echo), so tests use a fake. The real terminal (`golang.org/x/term` on `/dev/tty`) is implemented in `internal/cli` (archtest allows `x/term` only there) and `cmd/passbank` just calls `cli.Main` with it.
 
 **Tests:** a widget test that pumps the home and finds the text; the fonts load; `cli.Main` for `--version`, `--help`, an unknown command (exit 2); `scripts/isolated.sh` leaves no folder behind (a test that runs it with `env`).
 **Proof:** method B, `scripts/proof.sh docs/implemented-proof-images/1.4-first-window.png -- `: the window with "Passbank" in the center.

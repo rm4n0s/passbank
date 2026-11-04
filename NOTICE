@@ -1,0 +1,23 @@
+Passbank
+Copyright (c) 2026 Manos Ragiadakos
+Licensed under the MIT License (see LICENSE).
+
+Passbank builds on the software and data below. Each row names the step of
+docs/IMPLEMENTATION.md that adds it; a row whose step is not finished yet
+describes what is planned. The licenses of bundled files are kept in
+third_party/.
+
+  Component                                   License        Added by step
+  ------------------------------------------  -------------  -------------
+  github.com/rm4n0s/errors                    MIT            1.2
+  github.com/rm4n0s/glutter (and what it      MIT, BSD-3     1.4
+    brings in: golang.org/x/*, go-text,
+    godbus)
+  Go fonts (golang.org/x/image/font/gofont)   BSD-3-Clause   1.4
+  golang.org/x/crypto                         BSD-3-Clause   2.2
+  Copy of golang.org/x/crypto/argon2 that     BSD-3-Clause   2.2
+    exports Argon2d (internal/third_party/
+    argon2)
+  golang.org/x/term                           BSD-3-Clause   2.8
+  Test files of other KeePass implementations  MIT           3.1 (if used)
+    (gokeepasslib, keepass-rs, kdbxweb)
