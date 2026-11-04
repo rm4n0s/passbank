@@ -152,3 +152,20 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
   - The `Token` element of the unknown-XML fixture has a `Protected="True"` attribute but is not a `Value` element, so it is stored as plain text: step 2.6 must decrypt only the text of `Value` elements.
   - The Flatpak keeps its own configuration folder, which the script cannot move; `keepassxc-cli` used for these commands reads no setting that matters.
   - pykeepass does not know the 4.1 elements; `k41-fields.kdbx` was not written by a program that does. A real 4.1 file is the optional manual check.
+
+## 2.5 The KDBX 4 container
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-2.5-kdbx4-container
+- **Summary:** `readContainer4` takes the bytes of a KDBX 4.x file and the composite key and returns the header, the decrypted and decompressed XML, the inner stream (ID and key) and the binaries with their protected flag. Order of the checks: signature and version, outer header (TLV and VariantDictionary, every length bounded before allocation), header SHA-256 (`FileCorrupt`), cipher and IV length, KDF parameters, key derivation, header HMAC (`WrongCredentials`), HMAC block stream, decryption, gzip (bounded at 1 GiB), inner header. Derived keys are wiped when the function returns.
+- **Main files:** internal/core/kdbx/{file,variant,header4,container4}.go.
+- **Tests:** every KDBX 4 fixture (all ciphers, KDFs, compression on and off, key files, public custom data, unknown XML) reads to the expected XML; wrong password, wrong key file, password missing; about 30 damaged files (a flipped byte or a cut in each layer: signature, version, header fields, header hash, header HMAC, block HMAC, block length, ciphertext, gzip, inner header), each with its route; every file cut at any length through the header and at every 29th length after it; a cancelled context. A test-only KDBX 4 writer (`build_test.go`) makes files with exact parts for the cases no fixture has: unknown header fields, comment field, a wrong IV length, an unknown KDF, Argon2 and AES-KDF parameters that are out of range, missing or of the wrong type, VariantDictionary limits and bad types, bad gzip, a gzip stream over the limit, a block stream over the limit, and every inner-header error.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - The plan said unknown outer-header field IDs are an error "as in KeePass". They are kept in `Header.Unknown` instead, so that a file from a newer KeePass still opens and the writer can put them back.
+  - The error Tag `FileCorrupt` is shared by all the damage sites; each site has its own route test (the route ends in the function name that found it).
+  - `PaddingInvalid` and `CiphertextInvalid` from the cipher layer reach the caller as they are; SPEC §15 should list them under file damage (not changed yet).
+

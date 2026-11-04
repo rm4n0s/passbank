@@ -273,7 +273,7 @@ Every **Proof** item gives its exact command.
 **Read:** SPEC §4.1–§4.3, §14; KeePass "KDBX 4" page and `KdbxFile.Read.cs`.
 **Tasks:**
 1. Signature and version detection for every case of SPEC §4.1 and §15: `NotKdbx`, `KeePass1NotSupported`, `VersionUnsupported`, and the pre-release signature.
-2. The outer header: the TLV fields and the `VariantDictionary` (KDF parameters, `PublicCustomData`). Every length is bounded before allocation; unknown field IDs are an error, as in KeePass.
+2. The outer header: the TLV fields and the `VariantDictionary` (KDF parameters, `PublicCustomData`). Every length is bounded before allocation; unknown field IDs are kept in `Header.Unknown` (not rejected), so nothing is lost silently and later versions still open.
 3. Verify the header SHA-256 (`FileCorrupt`) and the HMAC (`WrongCredentials`), then the HMAC block stream, decryption and decompression. Gzip output is bounded at 1 GiB (`FileCorrupt`, "too large").
 4. The inner header: the inner stream ID and key, and the binaries (with their protected flag).
 5. Unknown cipher, KDF, compression or inner stream IDs give the errors of SPEC §15.
