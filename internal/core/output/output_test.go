@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/rm4n0s/errors"
 
@@ -29,6 +30,11 @@ func fixtureDB(t *testing.T, file, password string) *model.Database {
 		t.Fatal(err)
 	}
 	t.Cleanup(db.Wipe)
+	if file != "k41-fields.kdbx" {
+		// pykeepass writes the 4.1 element SettingsChanged into its 4.0 files; the tests
+		// that write 4.0 need databases that 4.0 holds.
+		db.Meta.SettingsChanged = time.Time{}
+	}
 	return db
 }
 
@@ -468,7 +474,7 @@ func TestWriteDoesNotChangeItsInputs(t *testing.T) {
 	c := creds
 	path := filepath.Join(t.TempDir(), "out.kdbx")
 	// The version 4.0 cannot hold the 4.1 fields; the database is not changed by that.
-	if err := Write(context.Background(), path, db, v40, settings, c, Options{}); err != nil {
+	if err := Write(context.Background(), path, db, v40, settings, c, Options{AllowLoss: true}); err != nil {
 		t.Fatal(err)
 	}
 	if diff := model.Diff(before, db); len(diff) != 0 {
@@ -484,5 +490,53 @@ func TestWriteDoesNotChangeItsInputs(t *testing.T) {
 	defer got.Wipe()
 	if kdbx.MinVersion(got) != v40 {
 		t.Error("the 4.0 file holds 4.1 fields")
+	}
+}
+
+func TestWriteRefusesALossUnlessAllowed(t *testing.T) {
+	db := fixtureDB(t, "k41-fields.kdbx", "fixture-rich")
+	dir := t.TempDir()
+	path := filepath.Join(dir, "out.kdbx")
+	err := Write(context.Background(), path, db, v40, settings, creds, Options{})
+	assertRoute(t, err, "lossesError.OutputVersionLosesData")
+	appErr, _ := errors.FromError(err)
+	if n, _ := appErr.Metadata["count"].(int); n < 3 {
+		t.Errorf("metadata = %v", appErr.Metadata)
+	}
+	text, _ := appErr.Metadata["losses"].(string)
+	for _, want := range []string{"GroupTags Root", "EntryQualityCheck Root/Bank", "SettingsChanged database"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("the losses lack %q: %s", want, text)
+		}
+	}
+	for _, secret := range []string{"bank-password", "older-bank-password", "4711"} {
+		if strings.Contains(text, secret) {
+			t.Errorf("a value is in the losses: %s", text)
+		}
+	}
+	if len(names(t, dir)) != 0 {
+		t.Errorf("the folder holds %v", names(t, dir))
+	}
+	// The same database fits 4.1 and needs no permission.
+	if err := Write(context.Background(), path, db, kdbx.Version{Major: 4, Minor: 1}, settings, creds, Options{}); err != nil {
+		t.Fatal(err)
+	}
+	// An existing file is not touched by the refusal.
+	if err := Write(context.Background(), path, db, v40, settings, creds, Options{Overwrite: true}); err == nil {
+		t.Error("the loss was accepted without AllowLoss")
+	}
+	if got, _, err := kdbx.Open(context.Background(), path, creds); err != nil || kdbx.MinVersion(got) != (kdbx.Version{Major: 4, Minor: 1}) {
+		t.Errorf("the 4.1 file was replaced: %v", err)
+	}
+}
+
+func TestWriteRefusesEncryptionTheVersionLacks(t *testing.T) {
+	db := fixtureDB(t, "k4-empty.kdbx", "fixture-min")
+	dir := t.TempDir()
+	argon := kdbx.EncryptionSettings{CipherID: crypto.CipherAES256, KDF: crypto.KDF{ID: crypto.KDFArgon2id, Memory: 1 << 20, Iterations: 1, Parallelism: 1}}
+	err := Write(context.Background(), filepath.Join(dir, "out.kdbx"), db, kdbx.Version{Major: 3, Minor: 1}, argon, creds, Options{AllowLoss: true})
+	assertRoute(t, err, "Supports.EncryptionNotInVersion")
+	if len(names(t, dir)) != 0 {
+		t.Errorf("the folder holds %v", names(t, dir))
 	}
 }

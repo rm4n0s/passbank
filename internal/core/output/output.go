@@ -16,6 +16,9 @@ import (
 
 // Options of Write.
 type Options struct {
+	// AllowLoss lets Write drop what the version cannot store (kdbx.Losses). Without
+	// it such a database is OutputVersionLosesData and nothing is written.
+	AllowLoss bool
 	// Overwrite lets Write replace a file that exists at the path. Without it an
 	// existing file is OutputExists, and it is never replaced, not even by a race.
 	Overwrite bool
@@ -61,6 +64,13 @@ func write(ctx context.Context, path string, db *model.Database, version kdbx.Ve
 	}
 	if _, statErr := fsys.Stat(path); statErr == nil && !opts.Overwrite {
 		return errors.New("OutputExists", "the output file exists; ask to replace it", "path", path)
+	}
+
+	if err := kdbx.Supports(version, settings); err != nil {
+		return err
+	}
+	if losses := kdbx.Losses(db, version); len(losses) > 0 && !opts.AllowLoss {
+		return lossesError(version, losses)
 	}
 
 	data, err := kdbx.Encode(ctx, db, version, settings, creds)
@@ -159,4 +169,18 @@ func verify(ctx context.Context, path string, creds crypto.Credentials, expected
 		return errors.New("WriteVerifyFailed", "the written file reads back differently", "differences", strings.Join(shown, "; "), "count", len(diff))
 	}
 	return nil
+}
+
+// maxLossesShown is how many losses an OutputVersionLosesData names.
+const maxLossesShown = 10
+
+// lossesError is the error for a database that the version cannot hold. Its
+// metadata has the count and the first losses (kind, item and UUID, never a value).
+func lossesError(version kdbx.Version, losses []kdbx.Loss) error {
+	var shown []string
+	for _, l := range losses[:min(len(losses), maxLossesShown)] {
+		shown = append(shown, l.Kind+" "+l.Item+" ("+l.What+")")
+	}
+	return errors.New("OutputVersionLosesData", "KDBX "+version.String()+" cannot store everything in the database; choose KDBX 4 or accept the loss",
+		"version", version.String(), "count", len(losses), "losses", strings.Join(shown, "; "))
 }

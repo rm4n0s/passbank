@@ -348,3 +348,18 @@ history          2
   - `keepassxc-cli` shows custom fields and attachments differently from the model, so the interop tests compare the five standard fields and the entry lists; the rest is covered by the round trip with Passbank's own reader, which two independent readers (pykeepass, KeePassXC) agree with on the fixtures.
   - Entries without a title cannot be named to `keepassxc-cli`, so the interop tests skip them.
 
+## 5.1 The loss check and encryption limits
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-5.1-losses
+- **Summary:** `kdbx.Losses(db, version)` lists, in document order, what the database holds that the version has no place for, as `Loss{Kind, Item, UUID, What}` (item path and UUID, never a value): for 4.0 the 4.1 fields (group tags, previous parent of groups and entries, custom icon names and times, times of custom data items, the settings-changed time, the quality-check flag); for 3.1, 3.0 and 2.x also the custom data of groups and entries (with their history) and the public custom data. `kdbx.Supports(version, settings)` is `EncryptionNotInVersion` for 2.x and 3.x with anything but the AES-KDF and AES-256 or Twofish. `Fit` now follows the same table of limits, so `Losses(Fit(db, v), v)` is always empty. `output.Write` refuses with `EncryptionNotInVersion` or `OutputVersionLosesData` (count and the first ten losses in the metadata) unless `Options.AllowLoss`, before anything is written.
+- **Main files:** internal/core/kdbx/{losses,fit}.go, internal/core/output/output.go.
+- **Tests:** a database with every kind of data checked against 4.1, 4.0, 3.1, 3.0 and 2.0 (the kinds lost in each), the items and wording of the losses with no value in them, history items, plurals, a database without a root group; 40 random databases × 5 versions: `Fit` leaves nothing to lose, is idempotent, and changes nothing when no loss is reported (but unused pool contents); databases without 4.1 fields lose nothing in 4.0; `Supports` for eight combinations with routes; `output.Write` refuses a loss without `AllowLoss`, names the items, leaves the folder and an existing file alone, and writes the same database as 4.1; it refuses Argon2 for 3.1.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - The fixtures made by pykeepass carry the 4.1 element `SettingsChanged` in files marked 4.0; writing such a file as 4.0 is therefore a (small) loss, and `MinVersion` returns 4.1 for it. The output tests clear that field where they write 4.0.
+  - One `Loss` per item and kind, not per field: an entry whose history has three quality-check flags gives one `EntryQualityCheck`.
+
