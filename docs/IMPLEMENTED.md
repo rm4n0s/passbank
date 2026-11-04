@@ -100,3 +100,20 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
   - `Raw` keeps unknown elements as a node tree (name, attributes, text, protected flag, children), not as raw bytes: the inner stream protects values in document order, so step 2.6 must decrypt the protected text of unknown elements to keep the stream in step. Comments and processing instructions are not kept, and an unknown element is written after the known ones of its parent, not at its original position.
   - `Diff` compares children by UUID and then their order; history entries by position. Times are compared with `Equal`.
   - `scripts/checks.sh` is new (not in the plan): it runs the standard checks of rule 9 through `heavy.sh`.
+
+## 2.2 Ciphers and key derivation
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-2.2-ciphers-kdf
+- **Summary:** `internal/core/kdbx/crypto` has the three outer ciphers (AES-256-CBC, Twofish-CBC with PKCS#7, ChaCha20), the three KDFs (AES-KDF, Argon2d, Argon2id) with bounded parameters and cancellation, and the two inner streams (Salsa20 and ChaCha20, as one continuous keystream) plus "none". `internal/third_party/argon2` is the copy of `x/crypto/argon2` v0.58.0 that exports Argon2d (SPEC A12).
+- **Main files:** internal/core/kdbx/crypto/{cipher,kdf,innerstream}.go, internal/third_party/argon2/ (upstream files, `DKey` and `dkey_test.go` added), third_party/x-crypto/, docs/ERROR-TAGS-UNTESTED.md, .golangci.yml (copied code is not linted).
+- **Tests:** the six UUIDs against the strings of SPEC §4.1; known answers from independent sources: AES-256-CBC and the ChaCha20 inner stream from OpenSSL, AES-KDF (1, 2, 10 rounds) from OpenSSL and Python, Twofish from the Twofish paper (all-zero 256-bit key), ChaCha20 from RFC 8439 A.1; Salsa20 inner stream equal to `x/crypto/salsa20` over seven different splits of 1000 bytes; round trips for every length 0–70; every error route (`CipherUnsupported`, `CipherKeyInvalid`, `CiphertextInvalid`, `PaddingInvalid` incl. four forged paddings, `KdfParametersRejected` for 13 cases, `KdfUnsupported`, `KdfKeyInvalid`, `KdfCancelled` before, in AES-KDF and in Argon2, `InnerStreamUnsupported`, `InnerStreamKeyInvalid`); the upstream argon2 tests, which include the RFC 9106 vectors of Argon2d, Argon2i and Argon2id, run in the copy, and `DKey` is checked against the Argon2d vectors of the reference CLI.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - Argon2 version 1.0 (0x10) is rejected (`KdfParametersRejected`): the library has only 1.3. At most 255 lanes (the library takes a byte), not 256 as the plan said. Argon2 salt 8 bytes to 64 KiB, memory up to 4 GiB, AES-KDF rounds up to 2³²−1.
+  - `CipherInitFailed` is listed in docs/ERROR-TAGS-UNTESTED.md: the sizes are checked before every constructor, so it cannot be reached.
+  - Argon2 cannot be interrupted: on cancellation the call returns at once and the computation finishes in the background (at most a few seconds, 4 GiB at the very most).
+  - The AES-KDF and Argon2 results are checked against independent code for the algorithms, but the full path (a real KDBX file) is checked only when the fixtures of step 2.4 exist.

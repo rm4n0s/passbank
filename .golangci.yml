@@ -15,6 +15,7 @@ linters:
   exclusions:
     paths:
       - testdata
+      - internal/third_party
 
 formatters:
   enable:
