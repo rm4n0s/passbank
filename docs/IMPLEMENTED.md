@@ -416,3 +416,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** SPEC §8 now lists the field names and says that a group counts as the same parent when it is paired with the other side's parent. A paired entry that differs only in its quality-check flag or previous parent is equal, as §8's list says (those two are not on it). Unpaired groups are changes of their own (`only-a`/`only-b`), so a new group with five entries is six changes; 7.3 decides what a kept entry in a dropped group means.
 
+## 6.3 Defaults and rules
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-6.3-plan
+- **Summary:** `internal/core/plan` holds the plan: `Plan` (the two inputs' hashes and names, the changes, one `Choice` each), `Allowed(kind)` and `IsAllowed` (the table of SPEC §8), `Default`/`DefaultFor` (keep what is in one input only; the newer of a pair, A on a tie; a deletion drops when it is strictly newer than the surviving entry's last modification; A's settings), `ApplyRule(plan, rule, filter)` and `RuleChoice` for `newer`, `a`, `b` and `union` (SPEC §9), `Plan.Set` (refuses a choice the kind does not allow) and `ParseRule`/`ParseChoice`. The CLI's `--prefer` and the GUI's bulk actions use the same functions.
+- **Main files:** internal/core/plan/plan.go.
+- **Tests:** `Allowed` and `IsAllowed` for every kind; the default of every kind with ties, deletions newer, older and equal; every rule on every kind with each side newer; a filtered rule touching only the selected changes; `Set` with allowed and refused choices; the parsers; every rule on the changes of a real comparison gives allowed choices.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** `Set` reports a bool instead of an error, so it needs no error tag; `plan.Validate` (7.3) and the plan file (6.4) report errors. Rule `a` on a deletion follows A's state (`deleted-in-a` drops, `deleted-in-b` keeps) and `union` leaves deletions, group changes and settings at the defaults, as §9 says.
+
