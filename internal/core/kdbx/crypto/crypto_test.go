@@ -190,12 +190,12 @@ func TestCipherErrors(t *testing.T) {
 		_, err := aes.Encrypt(key[:31], iv, nil)
 		assertRoute(t, err, "Cipher.Encrypt.CipherKeyInvalid")
 		_, err = aes.Decrypt(key, iv[:15], make([]byte, 16))
-		assertRoute(t, err, "Cipher.Decrypt.CipherKeyInvalid")
+		assertRoute(t, err, "Cipher.Decrypt->Cipher.DecryptRaw.CipherKeyInvalid")
 	})
 	t.Run("not whole blocks", func(t *testing.T) {
 		for _, n := range []int{0, 1, 15, 17, 31} {
 			_, err := aes.Decrypt(key, iv, make([]byte, n))
-			assertRoute(t, err, "Cipher.Decrypt.CiphertextInvalid")
+			assertRoute(t, err, "Cipher.Decrypt->Cipher.DecryptRaw.CiphertextInvalid")
 		}
 	})
 	t.Run("bad padding", func(t *testing.T) {
@@ -209,7 +209,7 @@ func TestCipherErrors(t *testing.T) {
 		for i := 0; i < 64; i++ {
 			wrong := sequence(100+i, 32)
 			if _, err := aes.Decrypt(wrong, iv, good); err != nil {
-				assertRoute(t, err, "Cipher.Decrypt.PaddingInvalid")
+				assertRoute(t, err, "Cipher.Decrypt->Cipher.Unpad.PaddingInvalid")
 				failed++
 			}
 		}
@@ -233,7 +233,7 @@ func TestCipherErrors(t *testing.T) {
 				t.Errorf("%s: bad padding accepted", name)
 				continue
 			}
-			assertRoute(t, err, "Cipher.Decrypt.PaddingInvalid")
+			assertRoute(t, err, "Cipher.Decrypt->Cipher.Unpad.PaddingInvalid")
 		}
 	})
 }
@@ -517,6 +517,51 @@ func TestErrorMessagesNameNoSecret(t *testing.T) {
 	for k, v := range appErr.Metadata {
 		if strings.Contains(k, "key") && k != "keyLength" && k != "wantKeyLength" {
 			t.Errorf("metadata %q = %v may hold a key", k, v)
+		}
+	}
+}
+
+// TestDecryptRawLeavesThePadding checks the two halves of Decrypt: DecryptRaw
+// keeps the padding, so that a wrong key gives garbage and not an error, and
+// Unpad removes it.
+func TestDecryptRawLeavesThePadding(t *testing.T) {
+	for _, id := range []model.UUID{CipherAES256, CipherTwofish, CipherChaCha20} {
+		c, err := LookupCipher(id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		key, iv := bytes.Repeat([]byte{1}, c.KeySize()), bytes.Repeat([]byte{2}, c.IVSize())
+		plain := []byte("fifteen bytes!!")
+		enc, err := c.Encrypt(key, iv, plain)
+		if err != nil {
+			t.Fatal(err)
+		}
+		raw, err := c.DecryptRaw(key, iv, enc)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.HasPrefix(raw, plain) {
+			t.Errorf("%s: raw = %x", c.Name(), raw)
+		}
+		got, err := c.Unpad(raw)
+		if err != nil || !bytes.Equal(got, plain) {
+			t.Errorf("%s: Unpad = %q, %v", c.Name(), got, err)
+		}
+		// With a wrong key a block cipher still decrypts (to garbage); Unpad then
+		// usually, but not always, finds the padding invalid.
+		if _, err := c.DecryptRaw(bytes.Repeat([]byte{9}, c.KeySize()), iv, enc); err != nil {
+			t.Errorf("%s: DecryptRaw with a wrong key: %v", c.Name(), err)
+		}
+	}
+	aes, err := LookupCipher(CipherAES256)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, raw := range map[string][]byte{"empty": nil, "zero": bytes.Repeat([]byte{0}, 16), "too large": append(bytes.Repeat([]byte{0}, 15), 17), "longer than the data": {20}, "inconsistent": append(bytes.Repeat([]byte{0}, 14), 1, 2)} {
+		if _, err := aes.Unpad(raw); err == nil {
+			t.Errorf("%s: Unpad accepted %x", name, raw)
+		} else {
+			assertRoute(t, err, "Cipher.Unpad.PaddingInvalid")
 		}
 	}
 }

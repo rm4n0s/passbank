@@ -179,6 +179,9 @@ func kdfFromVariant(d variantDict) (crypto.KDF, error) {
 	}
 	var k crypto.KDF
 	copy(k.ID[:], idBytes)
+	if k.ID == crypto.KDFAESKdbx4 {
+		k.ID = crypto.KDFAES // the same function under the ID that KeePassXC writes
+	}
 	seed, haveSeed := d.bytesOf("S")
 	switch k.ID {
 	case crypto.KDFAES:

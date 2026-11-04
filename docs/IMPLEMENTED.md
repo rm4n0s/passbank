@@ -253,3 +253,18 @@ history          2
   - KDBX 3.1 files exist with the ChaCha20 outer cipher (gokeepasslib, kdbxweb) and with the ChaCha20 inner stream (keepass-rs); the reader accepts them. The writer (M5) writes only what KeePass writes (AES-256 or Twofish with Salsa20).
   - KeePassXC writes entry tags in 3.1 files separated by `,`; the reader splits at `;` and `,` (already so in step 2.6).
 
+## 3.2 The KDBX 3 container
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-3.2-kdbx3-container
+- **Summary:** `readContainer3` reads the container of a KDBX 2.x or 3.x file: signature and version (major 2 or 3, any minor), the header (SPEC §4.5; unknown fields kept, a known field twice or a required one missing is `FileCorrupt`), AES-KDF key derivation, the cipher key SHA-256(master seed || transformed key), decryption with the check of the stream start bytes before the padding (`WrongCredentials`), the hashed block stream, GZip, and the SHA-256 of the header (for the `Meta/HeaderHash` check of step 3.3). All three outer ciphers work. `crypto.Cipher.Decrypt` was split into `DecryptRaw` and `Unpad` for this: a wrong key makes the padding invalid, which must not hide behind a `PaddingInvalid` error.
+- **Main files:** internal/core/kdbx/{header3,container3}.go, crypto/cipher.go.
+- **Tests:** all sixteen KDBX 3.1 files (the four from KeePassXC and twelve from KeePass, KeePassXC, kdbxweb, gokeepasslib and keepass-rs) open to XML; for each, the SHA-256 that Passbank computes of the header equals the `HeaderHash` in the file's XML, which checks the header bytes, the key derivation, the cipher, the block stream and the decompression at once; seven wrong-credential cases on real files; hand-built files of versions 2.0, 2.1, 3.0, 3.1 and 3.7 with each cipher, both compressions and tiny blocks; the inner stream IDs; unknown and comment header fields; 23 damaged-header and damaged-stream cases and 13 damaged-bytes cases, each with its route; every prefix of a file; cancellation; `readHashedBlocks` at its limit; and KDBX 4 files with either AES-KDF ID.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - Fixes a bug of step 2.5 found in step 3.1: a KDBX 4 header with the AES-KDF ID `7c02bb82-…` (KeePassXC) is now read as AES-KDF (`crypto.KDFAESKdbx4`, mapped to `KDFAES`); both IDs are tested.
+  - The `PaddingInvalid` and `CiphertextInvalid` errors of the outer cipher still reach the caller as they are (they are damage, not wrong credentials, once the start bytes match).
+

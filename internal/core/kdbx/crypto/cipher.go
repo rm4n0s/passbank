@@ -96,6 +96,18 @@ func (c Cipher) Encrypt(key, iv, plain []byte) ([]byte, error) {
 // padding that is not valid PKCS#7 (what a wrong key usually gives) is
 // PaddingInvalid.
 func (c Cipher) Decrypt(key, iv, data []byte) ([]byte, error) {
+	raw, err := c.DecryptRaw(key, iv, data)
+	if err != nil {
+		return nil, err
+	}
+	return c.Unpad(raw)
+}
+
+// DecryptRaw decrypts data and leaves the padding of a CBC cipher in place, so
+// that a caller can check the content (the stream start bytes of KDBX 3) before
+// it looks at the padding, which a wrong key makes invalid. Data that is empty
+// or not a whole number of blocks is CiphertextInvalid.
+func (c Cipher) DecryptRaw(key, iv, data []byte) ([]byte, error) {
 	if len(key) != c.keySize || len(iv) != c.ivSize {
 		return nil, errors.New("CipherKeyInvalid", "the key or the initialization vector has the wrong length",
 			"cipher", c.name, "keyLength", len(key), "wantKeyLength", c.keySize, "ivLength", len(iv), "wantIVLength", c.ivSize)
@@ -120,9 +132,22 @@ func (c Cipher) Decrypt(key, iv, data []byte) ([]byte, error) {
 	}
 	out := make([]byte, len(data))
 	cipher.NewCBCDecrypter(block, iv).CryptBlocks(out, data)
-	n := int(out[len(out)-1])
-	if n == 0 || n > size || !bytes.Equal(out[len(out)-n:], bytes.Repeat([]byte{byte(n)}, n)) {
+	return out, nil
+}
+
+// Unpad removes the PKCS#7 padding that DecryptRaw left; a stream cipher has
+// none. Padding that is not valid is PaddingInvalid.
+func (c Cipher) Unpad(raw []byte) ([]byte, error) {
+	if c.newBlock == nil {
+		return raw, nil
+	}
+	size := c.ivSize // the block size of the CBC ciphers
+	n := 0
+	if len(raw) > 0 {
+		n = int(raw[len(raw)-1])
+	}
+	if n == 0 || n > size || n > len(raw) || !bytes.Equal(raw[len(raw)-n:], bytes.Repeat([]byte{byte(n)}, n)) {
 		return nil, errors.New("PaddingInvalid", "the padding of the decrypted data is not valid", "cipher", c.name)
 	}
-	return out[:len(out)-n], nil
+	return raw[:len(raw)-n], nil
 }

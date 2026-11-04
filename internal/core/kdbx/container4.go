@@ -48,8 +48,11 @@ type container struct {
 	// InnerStreamID and InnerStreamKey say how the protected values are encrypted.
 	InnerStreamID  uint32
 	InnerStreamKey secret.Bytes
-	// Binaries are the attachments of the inner header, in order.
+	// Binaries are the attachments of the inner header, in order (KDBX 4 only).
 	Binaries []innerBinaryData
+	// HeaderHash is the SHA-256 of the header bytes, which a KDBX 2.x or 3.x file
+	// repeats in Meta/HeaderHash; it is nil for KDBX 4.
+	HeaderHash []byte
 }
 
 // innerBinaryData is an attachment of the inner header.
