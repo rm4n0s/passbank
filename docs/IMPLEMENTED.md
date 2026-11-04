@@ -83,3 +83,20 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
   - The real terminal moved into `internal/cli` (archtest allows `x/term` only there), so `cmd/passbank` only calls `cli.Main`; `internal/version` is new (both programs print it).
   - `scripts/headless-wayland.sh` and `screenshot-headless.sh` are Emetos's adaptations of Glutter's (BSD-3-Clause, noted in the header); `proof.sh` lost the options this project doesn't have.
   - The display-test helper that sets the GPU environment for programs the Go tests start is not written: step 8.6 adds it (`gpu-env.sh` says so).
+
+## 2.1 The data model
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-2.1-data-model
+- **Summary:** `internal/core/model` holds the format-independent database: `Database`, `Meta`, `Group`, `Entry`, `Field`, attachments with a content pool keyed by SHA-256 and the protected flag, auto-type, history, custom icons and data, deleted objects, the KDBX 4 public custom data, and `Raw` (unknown XML as a tree whose text is a secret, so protected unknown values can be decrypted and encrypted in stream order). `model.Diff` compares two databases deeply and reports paths, never values; `Clone` and `Wipe` copy and zero everything secret.
+- **Main files:** internal/core/model/{model,uuid,tree,clone,diff}.go, scripts/checks.sh.
+- **Tests:** UUID parse and format (valid, upper case, six malformed forms, route test for `UUIDInvalid`); Diff on equal databases, a clone and nil; 40 table cases that each change one property and expect its path (and in the reverse direction), checking that no line shows any of the five secrets of the sample; Clone is deep (nine kinds of change to the clone leave the original equal to a fresh sample); Wipe reaches field values, history, raw text and attachments; tree walks, stops, `FindGroup`, `FindEntry`, `GroupPath`; printing a `Field` with five verbs shows no value.
+- **Checks:** gofmt ✅ · go vet ✅ · golangci-lint ✅ · go test -race ✅ · CGO_ENABLED=0 build ✅ · CGO_ENABLED=0 test ✅ · error-tags ✅ · display tests none · interop tests none
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - Every field value is a `secret.Bytes`, protected or not, so that no title or user name is printed or logged by accident; `Field.Text()` reveals one on purpose.
+  - `Raw` keeps unknown elements as a node tree (name, attributes, text, protected flag, children), not as raw bytes: the inner stream protects values in document order, so step 2.6 must decrypt the protected text of unknown elements to keep the stream in step. Comments and processing instructions are not kept, and an unknown element is written after the known ones of its parent, not at its original position.
+  - `Diff` compares children by UUID and then their order; history entries by position. Times are compared with `Equal`.
+  - `scripts/checks.sh` is new (not in the plan): it runs the standard checks of rule 9 through `heavy.sh`.

@@ -56,7 +56,7 @@ This file breaks the milestones of `docs/SPEC.md` §18 into small steps. Each st
 
 ### Finishing a step
 
-9. **The standard checks must all pass.** Run them from the repo root, through `scripts/heavy.sh` (step 1.4) once it exists:
+9. **The standard checks must all pass.** `scripts/checks.sh` runs all of the list below, the heavy ones through `scripts/heavy.sh`. By hand, from the repo root:
    ```sh
    test -z "$(gofmt -l cmd internal)"
    go vet ./...
