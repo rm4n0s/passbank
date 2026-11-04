@@ -1063,7 +1063,7 @@ func parseXMLUUID(name, s string) (model.UUID, error) {
 	return u, nil
 }
 
-// parseXMLTime reads a time in either form that KDBX has: ISO 8601 (KDBX 3, and
+// parseXMLTime reads a time in either form that KDBX has: ISO 8601 (always has "-" and ":", which base64 has not; KDBX 3, and
 // files that KeePass 2.x or other programs wrote as KDBX 4) or base64 of the
 // seconds since 0001-01-01 (KDBX 4). The result is UTC with whole seconds.
 func parseXMLTime(name, s string) (time.Time, error) {
@@ -1071,7 +1071,7 @@ func parseXMLTime(name, s string) (time.Time, error) {
 	if s == "" {
 		return time.Time{}, nil
 	}
-	if strings.ContainsAny(s, "T:-") {
+	if strings.ContainsAny(s, ":-") {
 		t, err := time.Parse(time.RFC3339, s)
 		if err != nil {
 			return time.Time{}, errors.New("FileCorrupt", "an element is not a time", "where", name)

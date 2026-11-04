@@ -404,6 +404,8 @@ func TestParseXML4Times(t *testing.T) {
 		{"2026-01-01T00:00:01.987Z", time.Date(2026, 1, 1, 0, 0, 1, 0, time.UTC), false},
 		{"  2026-01-01T00:00:01Z\n", time.Date(2026, 1, 1, 0, 0, 1, 0, time.UTC), false},
 		{"", time.Time{}, false},
+		{base64Time(63882016949), time.Unix(63882016949-secondsToUnixEpoch, 0).UTC(), false}, // its base64 has a capital T, which ISO times have too
+
 		{base64Time(0), time.Time{}, false},
 		{base64Time(time.Date(2024, 1, 1, 0, 0, 1, 0, time.UTC).Unix() + secondsToUnixEpoch), time.Date(2024, 1, 1, 0, 0, 1, 0, time.UTC), false},
 		{base64Time(maxKDBXSeconds), time.Date(9999, 12, 31, 23, 59, 59, 0, time.UTC), false},

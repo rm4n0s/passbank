@@ -132,7 +132,7 @@ Established in step 3.1 from the sources below, in Passbank's own words. Behavio
 ## 5. Writing the result
 
 - **Format**: any version the reader accepts: 2.x, 3.0, 3.1, 4.0 or 4.1.
-  - The default is **KDBX 4**: version 4.0, or 4.1 when the result holds data that only 4.1 can store (group tags, previous-parent-group, custom icon names or modification times, the entry quality-check flag). This matches KeePass's rule of writing the lowest version that holds the data
+  - The default is **KDBX 4**: version 4.0, or 4.1 when the result holds data that only 4.1 can store (group tags, previous-parent-group, custom icon names or modification times, modification times of custom data items, the settings-changed time, the entry quality-check flag). This matches KeePass's rule of writing the lowest version that holds the data
   - The user can pick an exact version instead: `--format` in the CLI, a version menu on the GUI's Write screen
   - 2.x, 3.0 and 3.1 are written with one layout, differing in the version number (§4.5)
 - **Data the chosen version cannot hold**: when the result holds something the chosen version has no place for, the write is refused with `OutputVersionLosesData`. The error lists what would be lost and on which items. Examples:

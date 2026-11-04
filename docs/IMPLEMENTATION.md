@@ -363,7 +363,8 @@ Every **Proof** item gives its exact command.
 **Read:** SPEC §5, §6; KeePass `KdbxFile.Write.cs` and its rule for the lowest version (`GetMinKdbxVersion`).
 **Tasks:**
 1. Write every model field, with protected values XORed by the inner stream in document order, binary references into the inner header's list, and every `RawXML` back in its place.
-2. `MinVersion(db)`: 4.1 when the database holds a 4.1-only field (SPEC §5), else 4.0. When asked to write 4.0, a 4.1-only field is not written (M5's loss check decides whether that may happen; this step only provides the function and a `Lost` report of what was skipped).
+2. `MinVersion(db)`: 4.1 when the database holds a 4.1-only field (SPEC §5), else 4.0. When asked to write 4.0, a 4.1-only field is not written (M5's loss check decides whether that may happen; the report of what is skipped is `kdbx.Losses` of step 5.1, so this step only provides `MinVersion`).
+3. The writer serves KDBX 2.x and 3.x as well (ISO times, `Meta/Binaries`, `HeaderHash`), so that step 5.2 only adds the container.
 
 **Tests:** the XML of each 4.x fixture model, written and parsed back with 2.6, gives an equal model.
 

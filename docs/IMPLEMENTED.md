@@ -284,3 +284,20 @@ history          2
   - A version-4 file whose XML has a `HeaderHash` element keeps it as unknown XML; only KDBX 2.x and 3.x files check it.
   - `Info.Attachments` counts the attachments of entries, not the pool.
 
+## 4.1 The XML writer
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-4.1-xml-writer
+- **Summary:** `marshalXML` writes a `model.Database` as the XML of any KDBX version: KDBX 4.0 and 4.1 (base64 times, attachments by index into the inner header, 4.1 elements for 4.1 only), and the old dialect of 2.x and 3.x (ISO times, `Meta/Binaries` compressed on request and protected by the inner stream, `Meta/HeaderHash`). Protected values are encrypted with the inner stream in document order; every unknown element and attribute is written back as it was read, without layout; attachments are numbered in order of first use (history included), shared ones once, unused pool entries left out. `MinVersion` gives 4.1 when the database holds a 4.1-only field.
+- **Main files:** internal/core/kdbx/xmlwrite.go.
+- **Tests:** eleven fixtures (4.0, 4.1, 3.1, with unknown XML, public custom data, a protected attachment, the ChaCha20 inner stream, Cyrillic) are written as 4.1, 4.0, 3.1, 3.0 and 2.0, with and without compressed binaries, and read back by the reader of 2.6/3.3: `model.Diff` is empty (for 4.0 and older after removing the 4.1 fields); the database is not changed by writing; the XML has the dialect of its version and shows no secret; escaping of `& < > " '`, line breaks, tabs, `]]>` and CDATA in names, text, attributes, tags, raw XML and protected values; times at the limits (year 1, 1970, 9999, a zone and fractions); the attachment pool (order, sharing, the protected flag, copies for the inner header, history-only attachments); a database without a root group and an attachment missing from the pool; `MinVersion` for every 4.1 field, in a deep group and in a history item.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - **Found and fixed a bug of step 2.6** through the round trip: the reader took a base64 time for an ISO time when the base64 contained a capital `T` (it looked for `T`, `:` or `-`). It now looks for `:` or `-`, which base64 never has. The test has a time whose base64 contains a `T`.
+  - The plan's `Lost` report is not made here: `kdbx.Losses` of step 5.1 reports what a version cannot store, for every version at once.
+  - `MinVersion` also returns 4.1 for modification times of custom data items and for the settings-changed time, which SPEC §5 now lists.
+  - Raw XML is written without layout, because the text of a node is data; the rest of the XML is written with a line break after each element, which the reader ignores.
+
