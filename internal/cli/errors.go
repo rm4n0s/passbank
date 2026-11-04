@@ -62,6 +62,8 @@ func userMessage(e *errors.Error, file string) string {
 		return fmt.Sprintf("%s cannot be read: %v", file, e.OriginalErr)
 	case "ReadCancelled", "KdfCancelled":
 		return "cancelled"
+	case "PlanFileWriteFailed":
+		return fmt.Sprintf("%s cannot be written: %v", file, e.OriginalErr)
 	case "KeyFileCorrupt":
 		return "the key file is damaged: " + e.Message
 	}

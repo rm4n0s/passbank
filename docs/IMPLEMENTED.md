@@ -442,3 +442,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** four tags are new in SPEC §15: `PlanDuplicateItem` (an item with two lines), `PlanReadFailed`, `PlanWriteFailed` and `PlanInconsistent`. The first line must be the format line exactly (no blank line or comment before it). Names of the inputs in the header are not compared, only the hashes (a file may be renamed).
 
+## 6.5 `passbank diff`
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-6.5-diff-command
+- **Summary:** `passbank diff A B [--prefer newer|a|b|union] [-o PLAN] [--force] [--no-titles] [--debug]` with the credential options of both inputs (`--keyfile-a`, `--password-file-a`, `--no-password-a` and the same for `b`; a password otherwise comes from the terminal, never from an argument or the environment). It reads each file once (`kdbx.ReadFile`), hashes the bytes it opens, compares the databases and writes the plan with the defaults or the rule's choices to stdout, or to `-o` (mode 0600; an existing file is refused unless `--force`, which writes beside it and renames; a plan file that is one of the databases, also through a link, is refused). The summary of counts by kind goes to stderr. The merge fixture pair (two related databases with one change of every kind, A as KDBX 4.0 and B as KDBX 3.1) is built by `modeltest.MergePair` and committed in `internal/cli/testdata/merge/`.
+- **Main files:** internal/cli/diff.go, internal/cli/input.go, internal/core/model/modeltest/pair.go, internal/core/kdbx/open.go (`ReadFile`).
+- **Tests:** goldens of the plan and the summary for the default rule, `a`, `b`, `union` and `--no-titles` (stdout and stderr); the committed files hold exactly what `MergePair` makes (`-update-goldens` rewrites the files and the goldens); the plan reads back with `plan.Read` for the same inputs and equals the defaults, and the pair has one change of every kind; `-o` (mode, same text as stdout, refusal, `--force`, no temporary file left); the inputs and a link to one are refused as plan file; passwords asked for A then B on the terminal; identical databases; 12 error cases with exit status, message and (with `--debug`) the tag; route tests for `PlanFileExists`, `PlanFileWriteFailed`, `WriteCancelled` and `PlanOutputIsInput`; no password of the fixtures in any output.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method C — the golden plan of the related pair, `internal/cli/testdata/golden/diff-merge-newer.txt` with its summary `diff-merge-newer.stderr.txt`.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the plan header names the inputs by the base name of their files. A usage error is reported before `--debug` is known, so it shows no tag. Three tags are new in SPEC §15: `PlanFileExists`, `PlanFileWriteFailed` and `PlanOutputIsInput`.
+

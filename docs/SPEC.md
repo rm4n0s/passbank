@@ -408,6 +408,7 @@ Each failure has a Tag (see CLAUDE.md, "Error handling") and a message for the u
 | `FileReadFailed`, `FileTooLarge`, `ReadCancelled` | "<file> cannot be read: <cause>"; "<file> is larger than 2 GiB"; "reading was cancelled" |
 | `PlanStale`, `PlanIncomplete`, `PlanUnknownItem`, `PlanInvalidChoice`, `PlanDuplicateItem`, `PlanSyntax`, `PlanGroupNotEmpty` | what is wrong, with the line or item |
 | `PlanReadFailed`, `PlanWriteFailed`, `PlanInconsistent` | "the plan cannot be read or written: <cause>"; `PlanInconsistent` is a bug (a plan with a different number of choices and changes) |
+| `PlanFileExists`, `PlanFileWriteFailed`, `PlanOutputIsInput` | "<plan> exists; use --force to replace it"; "<plan> cannot be written: <cause>"; "the plan file must not be one of the databases" |
 | `ChoicesNeedTerminal` | "There is no terminal to ask for choices; use --plan or --prefer" |
 | `OutputExists` | "<out> exists; use --force to replace it" |
 | `OutputVersionLosesData` | "KDBX <v> cannot store <what> of <n> items; choose KDBX 4 or accept the loss" |

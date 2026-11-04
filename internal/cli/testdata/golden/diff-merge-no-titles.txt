@@ -1,0 +1,28 @@
+passbank-plan 1
+a sha256:0117a4c8f833c08610b235c28315895516bca0020e2bc2be2c3488ef1910f6fc a.kdbx
+b sha256:bab4af3b66b12fea4213f682ca11fcaf6aa14e5e0846da88ba6489fb0d173896 b.kdbx
+
+# only in A
+keep    abcd0000-0000-0000-0000-00000000000b
+
+# only in B
+keep    abcd0000-0000-0000-0000-000000000006
+keep    abcd0000-0000-0000-0000-000000000010
+
+# differs: password, url  (A 2026-10-01 03:00, B 2026-10-01 20:00)
+take-b  abcd0000-0000-0000-0000-00000000000c
+
+# differs: title  (A 2026-10-01 09:00, B 2026-10-01 04:00)
+take-a  abcd0000-0000-0000-0000-00000000000d
+
+# deleted in A on 2026-10-01 12:00  (B 2026-10-01 06:00)
+drop    abcd0000-0000-0000-0000-00000000000f
+
+# deleted in B on 2026-10-01 02:00  (A 2026-10-01 08:00)
+keep    abcd0000-0000-0000-0000-00000000000e
+
+# group differs: notes  (A 2026-10-01 02:00, B 2026-10-01 06:00)
+take-b  abcd0000-0000-0000-0000-000000000004
+
+# settings differ: name  (A -, B -)
+settings take-a

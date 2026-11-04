@@ -1,0 +1,10 @@
+A: <fixtures>/a.kdbx
+B: <fixtures>/b.kdbx
+changes: 9
+  only-a         1
+  only-b         2
+  differs        2
+  deleted-in-a   1
+  deleted-in-b   1
+  group-differs  1
+  settings       1

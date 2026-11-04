@@ -61,6 +61,13 @@ func Open(ctx context.Context, path string, creds crypto.Credentials) (*model.Da
 	return OpenBytes(ctx, data, creds)
 }
 
+// ReadFile reads a database file of at most MaxFileSize bytes, for a caller that
+// needs the bytes themselves (to hash them, say) and then opens them with
+// OpenBytes, so that what is hashed is what is opened.
+func ReadFile(ctx context.Context, path string) ([]byte, error) {
+	return readDatabaseFile(ctx, path, MaxFileSize)
+}
+
 // readDatabaseFile reads a database file of at most max bytes.
 func readDatabaseFile(ctx context.Context, path string, max int64) ([]byte, error) {
 	if err := ctx.Err(); err != nil {
