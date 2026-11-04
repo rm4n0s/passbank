@@ -134,3 +134,21 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
   - As in KeePass, a password and a hashed key file with the same text give the same key; the test says so.
   - An XML key file whose root is `KeyFile` and which is damaged inside is an error, not a hashed file, because no other program would read it as one; a document with another root, or a file that is not XML, follows the binary rules. XML in other encodings than UTF-8 is read as a binary file.
   - The behavior of KeePass for an XML 1.0 key whose base64 does not decode to 32 bytes is not documented; Passbank uses the decoded bytes as they are, like KeePass's reader does, and rejects only an empty or invalid one. A real KeePass-made file will confirm this in step 2.5's tests.
+
+## 2.4 Fixtures
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-2.4-fixtures
+- **Summary:** 15 KDBX files and 3 key files, none made by Passbank. KeePassXC 2.7.12 (the Flatpak's `keepassxc-cli`) made the four KDBX 3.1 files and the key files; pykeepass 4.2.0 made the KDBX 4 files: AES-256, ChaCha20 and Twofish; AES-KDF, Argon2d and Argon2id; with and without compression; password, key file, or both; a public-custom-data header field; a 4.1 file; a file with unknown XML. `make-fixtures.sh` opens every file with KeePassXC, which reads all of them.
+- **Main files:** internal/core/kdbx/testdata/ (make-fixtures.sh, gen/rich.py, gen/make_kdbx4.py, FIXTURES.md, rich.xml, the fixtures), internal/core/kdbx/fixtures_test.go, docs/MANUAL-CHECKS.md.
+- **Tests:** `TestFixturesAreListed`: the folder and FIXTURES.md list the same files, every database starts with the KDBX signature, and its version (3.1, 4.0, 4.1) is the one its name says.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** two optional checks in docs/MANUAL-CHECKS.md (a KDBX 4 file from KeePassXC's own writer, a real 4.1 file); no step waits for them.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - `keepassxc-cli` is not installed here; the Flatpak KeePassXC was used. It writes only KDBX 3.1 from its command line (`db-create` and `import` both), so the plan's "make every fixture keepassxc-cli can make" gave 3.1 files, and the KDBX 4 files had to come from pykeepass, installed in a temporary virtualenv from PyPI by the script (a development tool, not a dependency of Passbank). The generator is independent of Passbank, and KeePassXC reading the pykeepass files is checked on every run.
+  - KeePassXC's XML import crashes (segfault) on `Protected="True"` values; `rich.py` writes `ProtectInMemory="True"` for it, as a plain KeePass export does.
+  - The `Token` element of the unknown-XML fixture has a `Protected="True"` attribute but is not a `Value` element, so it is stored as plain text: step 2.6 must decrypt only the text of `Value` elements.
+  - The Flatpak keeps its own configuration folder, which the script cannot move; `keepassxc-cli` used for these commands reads no setting that matters.
+  - pykeepass does not know the 4.1 elements; `k41-fields.kdbx` was not written by a program that does. A real 4.1 file is the optional manual check.

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<KeePassFile>
+<Meta>
+<Generator>passbank fixture generator</Generator>
+<DatabaseName>Rich fixture</DatabaseName><DatabaseNameChanged>2026-01-01T00:00:01Z</DatabaseNameChanged>
+<DatabaseDescription>A database that uses most features</DatabaseDescription><DatabaseDescriptionChanged>2026-01-01T00:00:02Z</DatabaseDescriptionChanged>
+<DefaultUserName>ada</DefaultUserName><DefaultUserNameChanged>2026-01-01T00:00:03Z</DefaultUserNameChanged>
+<MaintenanceHistoryDays>365</MaintenanceHistoryDays>
+<Color>#336699</Color>
+<MasterKeyChanged>2026-01-01T00:00:04Z</MasterKeyChanged><MasterKeyChangeRec>-1</MasterKeyChangeRec><MasterKeyChangeForce>-1</MasterKeyChangeForce>
+<MemoryProtection><ProtectTitle>False</ProtectTitle><ProtectUserName>False</ProtectUserName><ProtectPassword>True</ProtectPassword><ProtectURL>False</ProtectURL><ProtectNotes>False</ProtectNotes></MemoryProtection>
+<CustomIcons><Icon><UUID>AAAAAAAAAAAAAAAAAAADAQ==</UUID><Data>iVBORw0KGgpub3QtcmVhbGx5LWEtcG5n</Data></Icon></CustomIcons>
+<RecycleBinEnabled>True</RecycleBinEnabled><RecycleBinUUID>AAAAAAAAAAAAAAAAAAABAw==</RecycleBinUUID><RecycleBinChanged>2026-01-01T00:00:05Z</RecycleBinChanged>
+<EntryTemplatesGroup>AAAAAAAAAAAAAAAAAAAAAA==</EntryTemplatesGroup><EntryTemplatesGroupChanged>2026-01-01T00:00:06Z</EntryTemplatesGroupChanged>
+<HistoryMaxItems>10</HistoryMaxItems><HistoryMaxSize>6291456</HistoryMaxSize>
+<LastSelectedGroup>AAAAAAAAAAAAAAAAAAABAg==</LastSelectedGroup><LastTopVisibleGroup>AAAAAAAAAAAAAAAAAAABAQ==</LastTopVisibleGroup>
+
+<CustomData><Item><Key>fixture-key</Key><Value>fixture-value</Value></Item></CustomData>
+
+</Meta>
+<Root>
+<Group><UUID>AAAAAAAAAAAAAAAAAAABAQ==</UUID><Name>Root</Name><Notes>root notes</Notes><IconID>48</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<IsExpanded>True</IsExpanded><DefaultAutoTypeSequence></DefaultAutoTypeSequence><EnableAutoType>null</EnableAutoType><EnableSearching>null</EnableSearching><LastTopVisibleEntry>AAAAAAAAAAAAAAAAAAACAQ==</LastTopVisibleEntry>
+
+<Entry><UUID>AAAAAAAAAAAAAAAAAAACAQ==</UUID><IconID>33</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<String><Key>Title</Key><Value>Bank</Value></String><String><Key>UserName</Key><Value>ada</Value></String><String><Key>Password</Key><Value Protected="True">bank-password-1</Value></String><String><Key>URL</Key><Value>https://example.test/bank</Value></String><String><Key>Notes</Key><Value>notes of Bank</Value></String>
+<String><Key>PIN</Key><Value Protected="True">4711</Value></String><String><Key>Account number</Key><Value>DE00 1234</Value></String><Binary><Key>statement.txt</Key><Value Ref="0"/></Binary><ForegroundColor>#112233</ForegroundColor><BackgroundColor>#445566</BackgroundColor><OverrideURL>firefox %u</OverrideURL><Tags>money;work</Tags><CustomIconUUID>AAAAAAAAAAAAAAAAAAADAQ==</CustomIconUUID>
+<AutoType><Enabled>True</Enabled><DataTransferObfuscation>0</DataTransferObfuscation><DefaultSequence>{USERNAME}{TAB}{PASSWORD}{ENTER}</DefaultSequence></AutoType>
+<History><Entry><UUID>AAAAAAAAAAAAAAAAAAACAQ==</UUID><IconID>33</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<String><Key>Title</Key><Value>Bank</Value></String><String><Key>UserName</Key><Value>ada</Value></String><String><Key>Password</Key><Value Protected="True">older-bank-password</Value></String><String><Key>URL</Key><Value>https://example.test/bank</Value></String><String><Key>Notes</Key><Value>notes of Bank</Value></String>
+
+<AutoType><Enabled>True</Enabled><DataTransferObfuscation>0</DataTransferObfuscation><DefaultSequence>{USERNAME}{TAB}{PASSWORD}{ENTER}</DefaultSequence></AutoType>
+</Entry><Entry><UUID>AAAAAAAAAAAAAAAAAAACAQ==</UUID><IconID>33</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<String><Key>Title</Key><Value>Bank</Value></String><String><Key>UserName</Key><Value>ada</Value></String><String><Key>Password</Key><Value Protected="True">old-bank-password</Value></String><String><Key>URL</Key><Value>https://example.test/bank</Value></String><String><Key>Notes</Key><Value>notes of Bank</Value></String>
+
+<AutoType><Enabled>True</Enabled><DataTransferObfuscation>0</DataTransferObfuscation><DefaultSequence>{USERNAME}{TAB}{PASSWORD}{ENTER}</DefaultSequence></AutoType>
+</Entry></History></Entry><Entry><UUID>AAAAAAAAAAAAAAAAAAACBA==</UUID><IconID>36</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<String><Key>Title</Key><Value>Ünïcödé ключ 鍵</Value></String><String><Key>UserName</Key><Value>用户</Value></String><String><Key>Password</Key><Value Protected="True">pässwörd-日本語</Value></String><String><Key>URL</Key><Value>https://example.test/ünïcödé-ключ-鍵</Value></String><String><Key>Notes</Key><Value>notes of Ünïcödé ключ 鍵</Value></String>
+
+<AutoType><Enabled>True</Enabled><DataTransferObfuscation>0</DataTransferObfuscation><DefaultSequence>{USERNAME}{TAB}{PASSWORD}{ENTER}</DefaultSequence></AutoType>
+</Entry>
+<Group><UUID>AAAAAAAAAAAAAAAAAAABAg==</UUID><Name>Email</Name><Notes></Notes><IconID>19</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<IsExpanded>False</IsExpanded><DefaultAutoTypeSequence>{PASSWORD}</DefaultAutoTypeSequence><EnableAutoType>false</EnableAutoType><EnableSearching>true</EnableSearching><LastTopVisibleEntry>AAAAAAAAAAAAAAAAAAAAAA==</LastTopVisibleEntry>
+<Entry><UUID>AAAAAAAAAAAAAAAAAAACAg==</UUID><IconID>34</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<String><Key>Title</Key><Value>Mail</Value></String><String><Key>UserName</Key><Value>ada@example.test</Value></String><String><Key>Password</Key><Value Protected="True">mail-password-1</Value></String><String><Key>URL</Key><Value>https://example.test/mail</Value></String><String><Key>Notes</Key><Value>notes of Mail</Value></String>
+
+<AutoType><Enabled>True</Enabled><DataTransferObfuscation>0</DataTransferObfuscation><DefaultSequence>{USERNAME}{TAB}{PASSWORD}{ENTER}</DefaultSequence></AutoType>
+</Entry>
+<Group><UUID>AAAAAAAAAAAAAAAAAAABBA==</UUID><Name>Nested</Name><Notes></Notes><IconID>48</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<IsExpanded>True</IsExpanded><DefaultAutoTypeSequence></DefaultAutoTypeSequence><EnableAutoType>null</EnableAutoType><EnableSearching>null</EnableSearching><LastTopVisibleEntry>AAAAAAAAAAAAAAAAAAAAAA==</LastTopVisibleEntry>
+</Group>
+</Group>
+<Group><UUID>AAAAAAAAAAAAAAAAAAABAw==</UUID><Name>Recycle Bin</Name><Notes></Notes><IconID>43</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<IsExpanded>True</IsExpanded><DefaultAutoTypeSequence></DefaultAutoTypeSequence><EnableAutoType>false</EnableAutoType><EnableSearching>false</EnableSearching><LastTopVisibleEntry>AAAAAAAAAAAAAAAAAAAAAA==</LastTopVisibleEntry>
+<Entry><UUID>AAAAAAAAAAAAAAAAAAACAw==</UUID><IconID>35</IconID>
+<Times><CreationTime>2026-01-01T00:00:01Z</CreationTime><LastModificationTime>2026-01-01T00:00:02Z</LastModificationTime><LastAccessTime>2026-01-01T00:00:03Z</LastAccessTime><ExpiryTime>2026-01-01T00:00:04Z</ExpiryTime><Expires>False</Expires><UsageCount>3</UsageCount><LocationChanged>2026-01-01T00:00:01Z</LocationChanged></Times>
+<String><Key>Title</Key><Value>Old forum</Value></String><String><Key>UserName</Key><Value>ada</Value></String><String><Key>Password</Key><Value Protected="True">forum-password-1</Value></String><String><Key>URL</Key><Value>https://example.test/old-forum</Value></String><String><Key>Notes</Key><Value>notes of Old forum</Value></String>
+
+<AutoType><Enabled>True</Enabled><DataTransferObfuscation>0</DataTransferObfuscation><DefaultSequence>{USERNAME}{TAB}{PASSWORD}{ENTER}</DefaultSequence></AutoType>
+</Entry>
+</Group>
+</Group>
+<DeletedObjects><DeletedObject><UUID>AAAAAAAAAAAAAAAAAAAEAQ==</UUID><DeletionTime>2026-01-01T00:00:07Z</DeletionTime></DeletedObject></DeletedObjects>
+</Root>
+
+</KeePassFile>

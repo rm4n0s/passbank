@@ -257,19 +257,16 @@ Every **Proof** item gives its exact command.
 **Tests:** every key-file format, a 2.0 file with a wrong hash, an empty password versus no password, the composite key against KeePass's construction for password only, key file only, and both.
 
 ### 2.4 Fixtures
-**Goal:** the KDBX fixtures of SPEC §17 for KDBX 4.0 and 4.1, and the 3.1 fixtures (ready for M3).
-**Read:** SPEC §17; `keepassxc-cli db-create --help`, `keepassxc-cli add --help`, `keepassxc-cli attachment-import --help`, `keepassxc-cli import --help`.
+**Goal:** the KDBX fixtures of SPEC §17: KDBX 4.0 and 4.1 now, and the 3.1 files that step 3.1 will use.
+**Read:** SPEC §17; `keepassxc-cli --help` and the help of `import`, `db-create` and `add`.
 **Tasks:**
-1. If `keepassxc-cli` is missing, **ask the user** to install it (`sudo dnf install keepassxc`).
-2. Make with `keepassxc-cli` every fixture it can make (the generator is `internal/core/kdbx/testdata/make-fixtures.sh`, which isolates `HOME` and the `XDG_*` folders and uses only passwords like `fixture-<name>`):
-   - a minimal database
-   - one with groups, entries, custom fields, protected fields, attachments, history (several edits of one entry) and a recycle bin
-   - one with a key file only, and one with a password and a key file
-   - one per KDF its options reach
-3. For each fixture `keepassxc-cli` can't make (a cipher or KDF it has no option for, 4.1-only fields, unknown XML, custom icons, custom data; the KDBX 3.x fixtures wait for step 3.1), write a **manual check** in `docs/MANUAL-CHECKS.md`. It gives the exact KeePassXC menu steps, the password, and the path to save to. Also check whether a KeePassXC import of an XML file can produce the unknown-XML fixture.
-4. `internal/core/kdbx/testdata/FIXTURES.md`: one line per fixture, with what made it, the program version, the password and key file, and what it holds.
+1. Make the fixtures with programs other than Passbank. KeePassXC's command line (`keepassxc-cli`, or the Flatpak `org.keepassxc.KeePassXC`, run with `flatpak run --filesystem=<work folder> --command=keepassxc-cli org.keepassxc.KeePassXC`) writes only KDBX 3.1, so it makes the 3.1 files and the key files; for KDBX 4 use pykeepass (pinned, in a temporary virtualenv: a development tool, not a dependency of Passbank), whose files KeePassXC must be able to read. If neither KeePassXC nor Python with `venv` and network access is available, **ask the user**.
+2. `internal/core/kdbx/testdata/make-fixtures.sh` makes them in a temporary folder with its own HOME and XDG folders, checks each with KeePassXC, and copies them to `testdata/`; `gen/rich.py` writes the XML of the rich content and `gen/make_kdbx4.py` makes the KDBX 4 files (cipher, KDF, compression, key file, header variants).
+3. The set: empty and rich databases; every cipher (AES-256, ChaCha20, Twofish), every KDF (AES-KDF, Argon2d, Argon2id), compression on and off, password only, key file only and both, a public-custom-data header field, a 4.1 file, a file with unknown XML, and the KDBX 3.1 versions of empty, rich, key file and both.
+4. `testdata/FIXTURES.md` lists every file (program, version, cipher, KDF, credentials, content) and the facts the tests may rely on; `fixtures_test.go` checks that the folder and the list agree and that each file has the version its name says.
+5. What no program available here can make goes to `docs/MANUAL-CHECKS.md` as an optional check (a KDBX 4 file from KeePassXC's own writer, a real 4.1 file); no step waits for it.
 
-**Done when:** the fixtures `keepassxc-cli` can make are committed, every other one has a manual check, and FIXTURES.md lists them all. Steps that need a pending fixture skip their test with `t.Skip("fixture pending, see docs/MANUAL-CHECKS.md")`, and the manual check names that test so the skip is removed when the fixture arrives.
+**Done when:** the fixtures are committed, `make-fixtures.sh` has opened every one with KeePassXC, FIXTURES.md lists them all, and the standard checks pass.
 
 ### 2.5 The KDBX 4 container
 **Goal:** from a file's bytes and credentials to the decrypted XML, the inner header and its binaries.
@@ -333,7 +330,7 @@ Every **Proof** item gives its exact command.
 2. Decide per version, and write the decision in §4.5 and in this step's `IMPLEMENTED.md` entry:
    - **Build it** when at least two independent sources agree on every difference, and a real file or test vector exists to check the reader against.
    - **Give it up** otherwise (the rule of A10): remove that version from SPEC §1, §2, §4.1 and §5, remove it from steps 3.2, 3.3, 5.1, 5.2 and 5.3 and from the tests of M4, and say so in the report. A version given up is rejected with `VersionUnsupported`.
-3. Fixtures: take real 3.1 files from KeePassXC if 2.4 produced them, and otherwise copy the test files of the permissive implementations (with their passwords and licenses, in `third_party/` and in FIXTURES.md). Passbank's own writer (M5) is never the only check of its reader: every version built has at least one file Passbank did not write.
+3. Fixtures: the KDBX 3.1 files exist since step 2.4 (made by KeePassXC). For 2.x and 3.0 there are none (A10): use the test files of a permissive implementation if one has them (with their passwords and licenses, in `third_party/` and in FIXTURES.md), else give the version up as A10 says. Passbank's own writer (M5) is never the only check of its reader: every version built has at least one file Passbank did not write.
 
 **Done when:** §4.5 is complete and cites sources, every version has a decision, and FIXTURES.md lists the old-version fixtures. The spec and plan changes are in this step's commit.
 
