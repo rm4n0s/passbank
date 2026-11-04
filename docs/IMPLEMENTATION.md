@@ -285,7 +285,7 @@ Every **Proof** item gives its exact command.
 **Read:** SPEC §4.4, §6; KeePass `KdbxFile.Read.Streamed.cs`.
 **Tasks:**
 1. A streaming `encoding/xml` reader that builds the model, decrypts protected values with the inner stream in document order, and resolves binary references into the attachment pool.
-2. Times: base64 of int64 seconds since 0001-01-01 UTC.
+2. Times: base64 of int64 seconds since 0001-01-01 UTC, and ISO 8601 (files written by KeePassXC or KeePass as KDBX 4 or 3 use it).
 3. Every element and attribute that the model has no field for is kept as `RawXML` on its parent object, in order, so the writer (4.1) can put it back.
 4. Depth, count and size limits: group nesting at most 1,000, and a string value at most 256 MiB (`FileCorrupt`).
 

@@ -340,7 +340,6 @@ func (d *differ) raw(path string, a, b Raw) {
 func (d *differ) rawNode(path string, a, b *RawNode) {
 	d.check(path+"/Name", a.Name == b.Name)
 	d.check(path+"/Attrs", slices.Equal(a.Attrs, b.Attrs))
-	d.check(path+"/Protected", a.Protected == b.Protected)
 	d.check(path+"/Text", a.Text.Equal(b.Text))
 	if len(a.Children) != len(b.Children) {
 		d.add(path+"/Children", "%d children and %d children", len(a.Children), len(b.Children))

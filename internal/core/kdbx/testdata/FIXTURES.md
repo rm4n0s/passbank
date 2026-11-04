@@ -57,7 +57,7 @@ the KDBX 4 files hold the XML as written. What the tests may rely on:
 - **Meta**: name "Rich fixture", description "A database that uses most features", default user name `ada`,
   history of 365 days, color `#336699`, only the password is protected in memory, the recycle bin is enabled
   (its group is `00000000-0000-0000-0000-000000000103`), at most 10 history items and 6291456 bytes per
-  entry, one custom icon (`…0301`, 26 bytes that are not a real PNG), one custom data item
+  entry, one custom icon (`…0301`, 24 bytes that are not a real PNG), one custom data item
   `fixture-key` = `fixture-value`.
 - **Groups**: `Root` (`…0101`) with the entries Bank and Ünïcödé; `Email` (`…0102`, not expanded, auto-type off,
   searching on, default sequence `{PASSWORD}`) with the entry Mail and the empty group `Nested` (`…0104`);

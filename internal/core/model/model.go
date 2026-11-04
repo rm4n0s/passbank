@@ -304,15 +304,14 @@ type RawAttr struct {
 }
 
 // RawNode is an XML element that the model does not know. Its text is a secret
-// because the element may have been protected by the inner stream, which the
-// reader must decrypt to keep the stream in step and the writer must encrypt again.
+// because plugins may keep secrets in it. KDBX protects only the Value of String
+// and Binary elements, so the reader never decrypts a RawNode: a Protected
+// attribute on it is an ordinary attribute, kept in Attrs, and its text is kept as
+// the file has it.
 type RawNode struct {
 	Name  string
 	Attrs []RawAttr
 	// Text is the character data of the element.
-	Text secret.Bytes
-	// Protected is whether Text was protected by the inner stream (the
-	// Protected="True" attribute, which is not repeated in Attrs).
-	Protected bool
-	Children  []*RawNode
+	Text     secret.Bytes
+	Children []*RawNode
 }

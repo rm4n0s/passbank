@@ -90,6 +90,14 @@ The reader converts both versions into one data model (section 6) and keeps ever
 - XML elements and attributes Passbank does not model are kept as raw XML on the object they belong to, and written back unchanged
 - `CustomData` (in the database, groups and entries), the `PublicCustomData` header field, and plugin data are kept
 
+How the reader treats the XML:
+- Only the `Value` of a `String` is decrypted from the inner stream, in document order (history entries included). A `Protected` attribute on any other element is an ordinary attribute and is kept with the unknown XML, and its text is not decrypted; this is what KeePass and KeePassXC do
+- An element of a known object (the file, `Meta`, a group, an entry) that the model has no field for, or a field element that carries attributes, is kept whole as raw XML on that object. Unknown elements inside the small parts that have no raw XML of their own (`Times`, `MemoryProtection`, `AutoType`, an icon, a custom data item, a `String`, a deleted object) are dropped, as they are by KeePass
+- Times are read in both forms KDBX has, ISO 8601 and base64 of the seconds since 0001-01-01, in any version
+- An attachment that no entry refers to is not carried over, as in KeePass: it is invisible to the user
+- Tags are split at `;` and `,`
+- Settings that a file leaves out take KeePass's defaults (history of 10 items and 6 MiB, 365 days, the recycle bin on, the password protected in memory)
+
 The only things dropped are those that only exist to encode the file itself:
 - the KDBX3 `HeaderHash`
 - seeds and IVs

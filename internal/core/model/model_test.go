@@ -79,7 +79,7 @@ func sample() *Database {
 			Attrs: []RawAttr{{Name: "Extra", Value: "yes"}},
 			Nodes: []*RawNode{{
 				Name: "Plugin", Attrs: []RawAttr{{Name: "v", Value: "1"}},
-				Children: []*RawNode{{Name: "Token", Text: secret.New([]byte(secretRaw)), Protected: true}},
+				Children: []*RawNode{{Name: "Token", Text: secret.New([]byte(secretRaw))}},
 			}},
 		},
 	}
@@ -218,7 +218,6 @@ func TestDiffFindsEveryKindOfDifference(t *testing.T) {
 		{"entry autotype", func(d *Database) { bank(d).AutoType.Associations[0].Sequence = "x" }, "AutoType: differs"},
 		{"entry custom data", func(d *Database) { bank(d).CustomData = nil }, "CustomData: 1 items and 0 items"},
 		{"entry raw text", func(d *Database) { bank(d).Raw.Nodes[0].Children[0].Text = secret.New([]byte("x")) }, "Raw/Nodes[0]/Children[0]/Text: differs"},
-		{"entry raw protected flag", func(d *Database) { bank(d).Raw.Nodes[0].Children[0].Protected = false }, "Children[0]/Protected: differs"},
 		{"entry raw child count", func(d *Database) { bank(d).Raw.Nodes[0].Children = nil }, "Raw/Nodes[0]/Children: 1 children and 0 children"},
 		{"entry raw node name", func(d *Database) { bank(d).Raw.Nodes[0].Name = "x" }, "Raw/Nodes[0]/Name: differs"},
 		{"history count", func(d *Database) { bank(d).History = nil }, "History: 1 versions and 0 versions"},

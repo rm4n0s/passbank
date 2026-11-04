@@ -169,3 +169,21 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
   - The error Tag `FileCorrupt` is shared by all the damage sites; each site has its own route test (the route ends in the function name that found it).
   - `PaddingInvalid` and `CiphertextInvalid` from the cipher layer reach the caller as they are; SPEC §15 should list them under file damage (not changed yet).
 
+## 2.6 The KDBX 4 XML
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-2.6-kdbx4-xml
+- **Summary:** `parseXML4` turns the decrypted XML of a container into a `model.Database`: Meta (with KeePass's defaults for what a file leaves out), custom icons, custom data, the group tree, entries with their string fields, attachments, auto-type, history, times, deleted objects, and the 4.1 elements. Protected `Value` elements are decrypted with the inner stream in document order; attachments are resolved into the content-addressed pool. What the model has no field for is kept as raw XML on the file, `Meta`, group or entry (SPEC §4.4 now lists the rules). Limits: groups nest at most 1,000 deep, elements at most 1,100, one text at most 256 MiB; the reader looks at `ctx` every 1,024 tokens.
+- **Main files:** internal/core/kdbx/xmlread.go; model.RawNode lost its `Protected` field.
+- **Tests:** every KDBX 4 rich fixture is read and compared with the facts of FIXTURES.md (Meta, groups, all entries and their fields, protected flags, history, attachment, deleted object), plus the 4.1 fields, the public custom data, and the unknown XML of `k4-unknown-xml` (kept in Meta, the root group, Bank and at the top level; the `Token` element with a `Protected` attribute is kept as it is, and the values after it still decrypt, which proves the stream stays in step); hand-made documents for decryption order (history, `ProtectInMemory`, empty values), the attachment pool (sharing, the protected flag, unused contents dropped, copies independent of the container), ISO and base64 times and their limits, tags, a leaf element with attributes, attributes of objects, Meta defaults; about 25 damaged documents each with its route (not XML, cut, wrong root, no root group, two root groups, missing UUIDs, bad UUID, number, bool, tri-state, base64, reference, time, deleted object, 1,001 nested groups, too deep unknown elements); the text limit at, and one over, a small limit; cancellation; an unknown inner stream; no secret in an error.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - `RawNode.Protected` is removed: the fixture shows (and KeePass does the same) that an unknown element with a `Protected` attribute is not encrypted, so the reader never decrypts raw nodes, and the attribute stays in `Attrs`.
+  - FIXTURES.md said the custom icon has 26 bytes; it has 24 (corrected).
+  - Namespaces are not supported: an element's local name is kept and its prefix is lost. KeePass files use none.
+  - Unknown elements inside `Times`, `MemoryProtection`, `AutoType`, icons, custom data items, `String` and deleted objects are dropped (no raw XML on those parts of the model); SPEC §4.4 says so.
+  - The order of groups relative to entries inside a group is not kept (the model keeps two lists); KeePass writes entries first.
+
