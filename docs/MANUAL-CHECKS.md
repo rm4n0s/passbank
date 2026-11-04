@@ -24,3 +24,16 @@ Nothing in the plan waits for this check.
 one: in KeePassXC 2.7 or KeePass 2.5x, make a database, add an entry, give a group a tag (KeePass: group
 properties) or move an entry to another group, and save. Copy it to `testdata/k41-keepassxc.kdbx`, with the
 password `fixture-min`, and tell the agent.
+
+## 2.8: the password prompt on a real terminal
+
+The prompt (`cli.TTY`) reads from `/dev/tty` and cannot run in a test. In a real terminal, from the
+project folder:
+
+    go run ./cmd/passbank info internal/core/kdbx/testdata/k4-rich.kdbx
+
+Type the password `fixture-rich` (nothing should appear while you type), press Enter, and check that the
+summary appears (version 4.0, cipher AES-256, kdf Argon2d, 4 groups, 4 entries, 1 attachment, 2 history
+items). Run it again, type a wrong password, and check that you get one line saying the password or key
+file is wrong. Tell the agent what you saw.
+

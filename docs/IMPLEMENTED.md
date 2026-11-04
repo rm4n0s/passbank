@@ -204,3 +204,35 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
   - `Open` takes `crypto.Credentials` (the key file content as a secret, not a path); the CLI reads the key file with `crypto.ReadKeyFile`.
   - Go's fuzzer spends most of the first half minute minimizing the 10 KB XML seeds of `FuzzParseXML4`; use `-fuzzminimizetime 2s` for short runs.
 
+## 2.8 `passbank info`
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-2.8-cli-info
+- **Summary:** `passbank info FILE` opens a database and prints, one fact per line in a fixed order: version, cipher, kdf (with memory, iterations and parallelism, or rounds), compression, inner stream, and the counts of groups, entries, attachments and history items. The credential options (`--keyfile`, `--password-file`, `--no-password`, with a `-a`/`-b` suffix for the commands with two inputs) are in `internal/cli/credentials.go`: the password comes from the option's file (first line; the file must be a regular file that group and others cannot access, checked on the open file) or from the terminal without echo, never from an argument or the environment. Options may come before or after the file. A failure prints one line with the message of SPEC §15 and exits 1; a mistake in the arguments exits 2 with the usage line; `--debug` adds tag, route and metadata.
+- **Main files:** internal/cli/{info,credentials,errors}.go, internal/cli/testdata/golden/.
+- **Tests:** golden output of `info` for seven fixtures (Argon2d, Argon2id, AES-KDF, all three ciphers, 4.0 and 4.1, with and without compression, empty); the prompt text; a password file (LF, CRLF, no newline, read-only 0400, only the first line, a file at the size limit, an empty one); key file with `--no-password`; key file with a password file; options first and last; every failure message (wrong password, no terminal, empty password, terminal error, file readable by others, missing password file / key file / database, not a database, a KDBX 3 file, no file, two files, unknown option, contradicting options); the `--debug` route; a write failure on stdout; cancellation; route tests for `PasswordFileTooOpen`, `PasswordFileReadFailed`, `PasswordNeedsTerminal`, `UsageInvalid`, `ReadCancelled`.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method C: the golden output of `passbank info` on the richest 4.x fixture, run with `go test ./internal/cli -run TestInfoGolden`:
+
+```
+version          4.0
+cipher           AES-256
+kdf              Argon2d
+kdf-memory       8 MiB
+kdf-iterations   2
+kdf-parallelism  2
+compression      GZip
+inner-stream     ChaCha20
+groups           4
+entries          4
+attachments      1
+history          2
+```
+
+- **Manual checks:** pending, see docs/MANUAL-CHECKS.md (the prompt on a real terminal).
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - The plan named `PasswordFileTooOpen` only; reading problems of the password file are a new tag, `PasswordFileReadFailed`, and mistakes in the arguments are `UsageInvalid` (exit status 2).
+  - An empty password is no password component (SPEC §12 now says so).
+  - `--debug` is an option of every command; the other commands get it with their steps.
+

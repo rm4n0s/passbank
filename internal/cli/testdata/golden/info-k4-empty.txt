@@ -1,0 +1,12 @@
+version          4.0
+cipher           AES-256
+kdf              Argon2d
+kdf-memory       8 MiB
+kdf-iterations   2
+kdf-parallelism  2
+compression      GZip
+inner-stream     ChaCha20
+groups           1
+entries          0
+attachments      0
+history          0

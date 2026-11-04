@@ -1,0 +1,10 @@
+version          4.0
+cipher           Twofish
+kdf              AES-KDF
+kdf-rounds       6000
+compression      GZip
+inner-stream     ChaCha20
+groups           4
+entries          4
+attachments      1
+history          2

@@ -288,6 +288,9 @@ passbank info  FILE
   - `--password-file-X PATH` reads the first line of a file. The file must be readable only by its owner, or Passbank refuses it
   - `--no-password-X` means the database has no password component
   - otherwise the password is read without echo from `/dev/tty`; a new output password is asked twice
+  - an empty password (typed, or the first line of the password file) is not a password component, as in KeePassXC; with no key file either, the command fails with `NoCredentials`
+  - `--no-password-X` together with `--password-file-X` is a mistake in the arguments (`UsageInvalid`, exit status 2)
+- **Errors**: a failed command prints one line, `passbank <command>: <message>` (the messages of section 15), and exits with status 1; a mistake in the arguments exits with 2 and adds the usage line. `--debug` adds the tag, the route and the metadata of the error (never a secret)
   - if there is no terminal, the error is `PasswordNeedsTerminal`
   - passwords are never accepted as arguments or environment variables
 - **Interactive input**: the password prompts and the interactive choices read from `/dev/tty` (the same terminal handle), so stdin and stdout stay free for pipes

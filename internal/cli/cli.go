@@ -35,10 +35,12 @@ type command struct {
 	run     func(ctx context.Context, e env, args []string) int
 }
 
-// commands returns the subcommands by name. Steps 2.8, 6.5 and 7.4 add info,
-// diff and merge.
+// commands returns the subcommands by name. Steps 6.5 and 7.4 add diff and
+// merge.
 func commands() map[string]command {
-	return map[string]command{}
+	return map[string]command{
+		"info": {summary: "show how a database is stored and what it holds", run: runInfo},
+	}
 }
 
 // Main is the body of cmd/passbank: it runs the command named by args (the
