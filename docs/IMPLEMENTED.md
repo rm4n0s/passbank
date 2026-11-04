@@ -377,3 +377,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** Passbank writes the versions 2.0, 3.0 and 3.1 only (other minors of 2 and 3 are `VersionUnsupported`), and its 4.x files are 4.0 or 4.1.
 
+## 5.3 Round trip in every version
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-5.3-round-trip-matrix
+- **Summary:** the round-trip matrix of SPEC §17, through `output.Write`: every database is written in 4.1, 4.0, 3.1, 3.0 and 2.0 with settings the version holds (all ciphers and KDFs in 4.x, AES-256 and Twofish with the AES-KDF in the others, both compressions) and read back.
+- **Main files:** internal/core/output/matrix_test.go.
+- **Tests:** 20 fixtures (KDBX 4 and 3.1, every cipher and KDF, unknown XML, public custom data, 4.1 fields, attachments, a protected attachment, ChaCha20 as inner stream, Cyrillic) and 40 random databases (half with 4.1 fields, a third without custom data on groups and entries) × 5 versions = 300 cells. In each: without `AllowLoss` the write is refused with `OutputVersionLosesData` exactly when `Losses` lists something, and a refused write leaves nothing in the folder; with `AllowLoss` the file reads back equal to the database as the version holds it (`Fit`); when nothing is lost the file reads back equal to the original, except the contents the entries do not use. All green.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the matrix checks that what differs is "exactly what `Losses` reports" in two halves, because `Diff` and `Losses` speak different languages: `Fit(db, v)` is what the version holds (and `Losses(Fit(db, v), v)` is empty, step 5.1), and the file equals it.
+
