@@ -50,3 +50,16 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
 - **Manual checks:** none.
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** `github.com/rm4n0s/errors` was added here (not in 1.3) because archtest needs it; step 1.3 is adjusted. `internal/third_party/argon2` and the fixture-only packages `modeltest` and `cli/review` are not created yet; their steps (2.2, 4.4, 7.5) do it. `NOTICE` lists the planned components with the step that adds each.
+
+## 1.3 Test isolation, secrets and the error-tag script
+
+- **Date:** 2026-11-04
+- **Branch:** feat/step-1.3-isolation-secrets-tags
+- **Summary:** `testenv.Isolate(t)` points HOME and every XDG variable at fresh folders under `t.TempDir()` (the runtime folder is mode 0700), and `testenv.Fixture` returns a path under the package's `testdata/` or fails the test. `secret.Bytes` holds secrets: Wipe zeroes every copy, Equal is constant-time, and every fmt verb, slog and text encoder print `[secret]`. `scripts/error-tags.sh` lists every error Tag and, with `--untested`, the Tags no test asserts.
+- **Main files:** internal/testenv/, internal/core/secret/, scripts/error-tags.sh, internal/archtest/errortags.go, internal/archtest/cmd/errortags/, internal/archtest/archtest.go (shared `walkGo`).
+- **Tests:** testenv with a fake `TB` (variables set, all inside the temp folder, restored after a real subtest, failure paths); secret (wipe shared by copies, clone independent, Equal table, no leak with ten fmt verbs on values, pointers, structs with exported and unexported fields, slices and maps, nor in slog text/JSON nor JSON); error tags on fixture trees (literal, table, helper, `.Tag` comparison, `errors.Is` sentinel, comment-only and test-fake Tags not counted, non-literal Tag, exceptions file), the command's output and exit status, and the shell script on fixtures. `TestRepositoryErrorTags` runs the same check on Passbank itself on every `go test`. Route test for the new Tag `ErrorTagsExceptionsReadFailed`.
+- **Checks:** gofmt ✅ · go vet ✅ · golangci-lint ✅ · go test -race ✅ · CGO_ENABLED=0 build ✅ · CGO_ENABLED=0 test ✅ · error-tags ✅ (prints nothing) · display tests none · interop tests none
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the first version of `secret.Bytes` held its bytes behind a pointer to a struct, and the leak test found that `fmt` prints such a field by its contents with `%s` or `%q` when the field is unexported (`%!s(*secret.buffer=&{[104 117 ...]})`). It now holds them behind a func, which fmt prints as an address; the doc comment says why, and a `Bytes` is no longer comparable with `==` (use `Equal`). The error-tag scanner is a trimmed port of Emetos's (the user's MIT project, commit 4d0c4b5); its extra rule file is not ported because no step needs it. The Go program is in `internal/archtest/cmd/errortags` and the script wraps it, as in Emetos. `docs/ERROR-TAGS-UNTESTED.md` does not exist yet (an empty list).

@@ -140,16 +140,12 @@ func ModulePath(root string) (string, error) {
 	return "", errors.New("ModuleLineMissing", "go.mod has no module line", "root", root)
 }
 
-// Check walks the Go files below root and returns every violation, sorted by
-// file, line and rule. module is the module path of the code under root.
-//
-// Folders named testdata or vendor and folders that start with a dot or an
-// underscore are skipped.
-func Check(root, module string) ([]Violation, error) {
-	rules := importRules(module)
+// walkGo parses every Go file below root and calls visit with the file's
+// slash-separated path relative to root. Folders named testdata or vendor and
+// folders that start with a dot or an underscore are skipped.
+func walkGo(root string, visit func(rel string, fset *token.FileSet, file *ast.File)) error {
 	fsys := os.DirFS(root)
-	var found []Violation
-	err := fs.WalkDir(fsys, ".", func(rel string, d fs.DirEntry, walkErr error) error {
+	return fs.WalkDir(fsys, ".", func(rel string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return errors.NewErr("RootWalkFailed", walkErr).SetMetadata("path", rel)
 		}
@@ -172,8 +168,18 @@ func Check(root, module string) ([]Violation, error) {
 		if err != nil {
 			return errors.NewErr("SourceParseFailed", err).SetMetadata("file", rel)
 		}
-		found = append(found, checkFile(fset, file, rel, rules)...)
+		visit(rel, fset, file)
 		return nil
+	})
+}
+
+// Check walks the Go files below root and returns every violation, sorted by
+// file, line and rule. module is the module path of the code under root.
+func Check(root, module string) ([]Violation, error) {
+	rules := importRules(module)
+	var found []Violation
+	err := walkGo(root, func(rel string, fset *token.FileSet, file *ast.File) {
+		found = append(found, checkFile(fset, file, rel, rules)...)
 	})
 	if err != nil {
 		return nil, err
