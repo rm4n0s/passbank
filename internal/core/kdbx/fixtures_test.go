@@ -40,6 +40,13 @@ func TestFixturesAreListed(t *testing.T) {
 			}
 		}
 	}
+	exts, err := os.ReadDir(filepath.Join("testdata", "ext"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range exts {
+		onDisk = append(onDisk, "ext/"+e.Name())
+	}
 	slices.Sort(onDisk)
 	slices.Sort(listed)
 	if !slices.Equal(onDisk, listed) {
@@ -47,12 +54,13 @@ func TestFixturesAreListed(t *testing.T) {
 	}
 
 	wantVersion := map[string][2]uint16{ // by name prefix: major, minor
-		"k31-": {3, 1}, "k41-": {4, 1}, "k4-": {4, 0},
+		"k31-": {3, 1}, "k41-": {4, 1}, "k4-": {4, 0}, "ext/": {3, 1},
 	}
 	for _, name := range onDisk {
 		if !strings.HasSuffix(name, ".kdbx") {
 			continue
 		}
+		// The key files of ext/ are listed too.
 		data, err := os.ReadFile(filepath.Join("testdata", name))
 		if err != nil {
 			t.Fatal(err)

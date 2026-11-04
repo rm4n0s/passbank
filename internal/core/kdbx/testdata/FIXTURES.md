@@ -9,8 +9,8 @@ the folder agree).
 KDBX 3.1 only, so the KDBX 3.1 files and the key files come from it. *pykeepass* is pykeepass 4.2.0, a
 Python implementation of KDBX that is independent of Passbank and of KeePassXC; it makes the KDBX 4 files.
 `make-fixtures.sh` opens every file with KeePassXC after making it, so KeePassXC reads what pykeepass
-wrote. No file here was written by KeePassXC's own KDBX 4 writer or by KeePass 2; see
-`docs/MANUAL-CHECKS.md`. KDBX 2.x and 3.0 files are not here (SPEC §19, A10).
+wrote. No file here was written by KeePassXC's own KDBX 4 writer; see `docs/MANUAL-CHECKS.md`. The files in
+`ext/` come from other projects (below). KDBX 2.x and 3.0 files exist nowhere that Passbank may use (SPEC §4.5).
 
 The KDF parameters are small so that tests run fast: Argon2 with 8 MiB, 2 lanes and 2 passes, AES-KDF with
 6000 rounds (pykeepass) or about 100 ms of rounds (KeePassXC).
@@ -36,6 +36,35 @@ The KDF parameters are small so that tests run fast: Argon2 with 8 MiB, 2 lanes 
 | `k41-fields.kdbx` | 4.1 | pykeepass | AES-256 | Argon2d | GZip | password `fixture-rich` | rich, plus the elements that only KDBX 4.1 has (below) |
 
 "Empty" is the empty database the program makes: a root group, and for KeePassXC a recycle bin setting; no entries.
+
+## Databases from other projects (`ext/`)
+
+Copied from the test files of MIT-licensed KeePass implementations (licenses and commits in `third_party/`), read
+only. All are KDBX 3.1 and use AES-KDF. They give the KDBX 3 reader files that neither Passbank nor KeePassXC's
+command line wrote.
+
+| File | Version | Made by | Cipher | KDF | Compression | Unlocked with | Content |
+|---|---|---|---|---|---|---|---|
+| `ext/rs-password.kdbx` | 3.1 | KeePass 2 (keepass-rs) | AES-256 | AES-KDF, 6000 rounds | GZip | password `demopass` | the demo database: root `sample`, 5 groups, 6 entries; `Meta/HeaderHash`; custom data |
+| `ext/rs-attachments.kdbx` | 3.1 | KeePassXC 2.7 (keepass-rs) | AES-256 | AES-KDF, 1000000 rounds | GZip | password `demopass` | 2 entries, 4 pooled binaries, one empty (`<Binary ID="2" Compressed="True"/>`), shared between the entries |
+| `ext/rs-chacha20-inner.kdbx` | 3.1 | keepass-rs | AES-256 | AES-KDF, 6000 rounds | GZip | password `password` | inner stream ChaCha20 (ID 3); every password is `admin` |
+| `ext/rs-keyfile.kdbx` | 3.1 | keepass-rs | AES-256 | AES-KDF, 100 rounds | GZip | `ext/rs-keyfile.key` only | root `Root`, 1 entry |
+| `ext/rs-keyfile-xml.kdbx` | 3.1 | keepass-rs | AES-256 | AES-KDF, 100 rounds | GZip | `ext/rs-keyfile-xml.key` only | root `Root`, 6 entries |
+| `ext/go-example.kdbx` | 3.1 | gokeepasslib | AES-256 | AES-KDF, 6000 rounds | GZip | password `abcdefg12345678` | 3 entries |
+| `ext/go-example-key.kdbx` | 3.1 | gokeepasslib | AES-256 | AES-KDF, 6000 rounds | GZip | password `abcdefg12345678` and `ext/go-example-key.key` | 3 entries |
+| `ext/go-protected-binary.kdbx` | 3.1 | kdbxweb 1.14.4 | AES-256 | AES-KDF, 300000 rounds | GZip | password `123` | 5 entries, groups before entries, an attachment `a.bin` (16 bytes of 0x07), a protected custom field |
+| `ext/go-chacha.kdbx` | 3.1 | gokeepasslib | ChaCha20 (12-byte IV) | AES-KDF, 60000 rounds | GZip | password `abcdefg12345678` | 4 entries |
+| `ext/go-twofish.kdbx` | 3.1 | gokeepasslib | Twofish | AES-KDF, 600000 rounds | GZip | password `test1234test` | |
+| `ext/web-demo.kdbx` | 3.1 | kdbxweb | AES-256 | AES-KDF, 6000 rounds | GZip | password `demo` and `ext/web-demo.key` | 4 entries |
+| `ext/web-cyrillic.kdbx` | 3.1 | kdbxweb | AES-256 | AES-KDF, 100 rounds | none | password `пароль` | 2 entries; not compressed |
+
+| Key file | Format | From |
+|---|---|---|
+| `ext/rs-keyfile.key` | 128 random bytes (hashed with SHA-256 to make the key) | keepass-rs |
+| `ext/rs-keyfile-xml.key` | XML 1.00, base64 key of 32 bytes, on one line | keepass-rs |
+| `ext/go-example-key.key` | XML 1.00, base64 key of 32 bytes | gokeepasslib |
+| `ext/web-demo.key` | XML 1.00, base64 key of 32 bytes | kdbxweb |
+
 
 ## Key files
 

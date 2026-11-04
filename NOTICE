@@ -24,5 +24,5 @@ third_party/.
   Copy of golang.org/x/crypto/argon2 that     BSD-3-Clause   2.2
     exports Argon2d (internal/third_party/
     argon2)
-  Test files of other KeePass implementations  MIT           3.1 (if used)
-    (gokeepasslib, keepass-rs, kdbxweb)
+  Test databases of gokeepasslib, keepass-rs  MIT           3.1
+    and kdbxweb (third_party/)

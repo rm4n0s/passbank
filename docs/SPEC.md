@@ -104,16 +104,37 @@ The only things dropped are those that only exist to encode the file itself:
 - the inner stream key
 - block framing
 
-### 4.5 Differences between versions
+### 4.5 KDBX 2.x and 3.x, and how they differ from KDBX 4
 
-To be written during M3: the differences between KDBX 2.x, 3.0 and 3.1 (header fields, XML elements and their formats), established from the KeePass 2 source and the fixtures. Reading these versions uses this section, and writing them (M5) must follow it exactly.
+Established in step 3.1 from the sources below, in Passbank's own words. Behavior only was taken from the GPL sources (KeePassXC's `Kdbx3Reader.cpp`, `Kdbx3Writer.cpp`, `KeePass2.h`); the permissively licensed ones (gokeepasslib, keepass-rs, kdbxweb) agree with them where they overlap, and real files from KeePass and KeePassXC were opened to check every statement marked (file).
+
+**One container for 2.x, 3.0 and 3.1.** Every source dispatches on the major version only: KeePassXC reads any file whose major version is 3 or lower with one reader (its minimum is 2.0), keepass-rs and gokeepasslib treat major 3 alike, kdbxweb accepts 3.0 and 3.1. Passbank reads major versions 2 and 3, any minor, with one reader. The only differences between 2.x, 3.0 and 3.1 are in the XML: `Meta/HeaderHash` must be present from 3.1 on and may be missing before (KeePassXC); nothing else is conditioned on the minor version in any source.
+
+**Layout** (after the 12 bytes of signatures and version):
+1. The header: fields of 1 byte ID, 2 bytes length (little endian), data. IDs: 0 end (data `\r\n\r\n`), 1 comment, 2 cipher ID (16 bytes), 3 compression (u32: 0 none, 1 GZip), 4 master seed (32), 5 transform seed (32), 6 transform rounds (u64), 7 initialization vector (the cipher's size), 8 inner stream key (32), 9 stream start bytes (32), 10 inner stream ID (u32: 0 none, 1 ArcFourVariant (rejected, A9), 2 Salsa20, 3 ChaCha20 (a keepass-rs test file uses it; accepted)). IDs 11 and 12 (KDF parameters, public custom data) do not exist; an unknown ID is skipped, not an error (KeePassXC warns and continues). Required: cipher, master seed, transform seed, rounds, IV, inner stream key, start bytes. A missing one is `FileCorrupt`
+2. The header is not authenticated by a hash or an HMAC after it. Its SHA-256 is stored in the XML (`Meta/HeaderHash`, below), over the bytes from the first signature to the end of the end-of-header field
+3. The payload, to the end of the file, is encrypted with the outer cipher (AES-256, Twofish, or ChaCha20 with a 12-byte IV, which kdbxweb and gokeepasslib files use even in version 3.1; the reader accepts all three). Key derivation: the composite key is transformed with AES-KDF (the transform seed as the AES key, the rounds as the count: the same function as KDBX 4's, `crypto.KDF`), then the cipher key is SHA-256(master seed || transformed key). There is no challenge-response part (Passbank does not support it)
+4. The decrypted payload starts with the 32 stream start bytes; if they differ from the header's, the credentials are wrong (`WrongCredentials`), the only check of the credentials in this format (KeePassXC; file)
+5. Then the hashed block stream: blocks of u32 index (0, 1, 2, …), 32 bytes SHA-256 of the block's data, u32 size, the data. The last block has size 0 and a hash of 32 zero bytes. A wrong index or hash is `FileCorrupt`; a missing last block is `FileCorrupt`
+6. Then, if compression is 1, GZip. The result is the XML
+
+**XML differences from KDBX 4** (the model is the same; the reader of §4.4 handles both):
+- **Times** are text, `2006-01-02T15:04:05Z` (UTC), not base64 seconds (file). Passbank's XML reader accepts both forms in any version
+- **Attachments** are in `Meta/Binaries` as `<Binary ID="n" Compressed="True|False" Protected="True|False">` elements holding base64 (GZip of the content first when Compressed; XOR with the inner stream when Protected, in document order with the other protected values); an entry refers to one with `<Binary><Key>name</Key><Value Ref="n"/></Binary>`. Several entries may refer to one; an empty content is a self-closing element (file: KeePassXC 2.7). The pool of §4.4 is built from them. An inline `<Value Compressed=… >content</Value>` in an entry, which older programs wrote, is read the same way
+- **`Meta/HeaderHash`**: base64 of the SHA-256 of the header. A mismatch is `FileCorrupt`; a missing element is an error only from 3.1 on
+- **No 4.1 elements**: group tags and previous-parent-group, entry quality-check, previous-parent-group, `SettingsChanged`, custom icon names and modification times, and the modification time of custom data items do not exist; `CustomData` exists in `Meta` only (files from KeePass and KeePassXC have none on groups and entries). `Tags` exists on entries; KeePassXC writes them separated by `,`, KDBX 4 files by `;`, and the reader splits at both
+- There is no `PublicCustomData`, no KDF parameter dictionary, no inner header, and the binary pool is not in the file's header
+
+**Writing** a 2.x, 3.0 or 3.1 file is the reverse: the same header, AES-KDF, outer cipher AES-256 or Twofish, Salsa20 inner stream, GZip or none, and the XML with ISO times, `Meta/Binaries`, and `HeaderHash`. The version written is the one asked for; the layout is the same for all three. KDBX 3 AES-KDF uses the KDF ID `c9d9f39a-…` in KDBX 4 files too (keepass-rs does this "for compatibility"); KDBX 4 files from KeePassXC may carry `7c02bb82-79a7-4ac0-927d-114a00648238` for the AES-KDF, which the reader accepts as the same function.
+
+**Decision (A10).** All of 2.x, 3.0 and 3.1 are built, because the format is established by four independent sources and is the same for the three. The 3.1 reader is checked against real files from KeePass (keepass-rs `test_db_with_password.kdbx`), KeePassXC 2.7 (the fixtures and keepass-rs `test_db_kdbx3_with_attachments.kdbx`) and kdbxweb (several, with a key file, ChaCha20, Cyrillic, empty password). No permissive repository has a 2.x or 3.0 file; those versions are checked by KeePassXC reading what Passbank writes (M5) and Passbank reading it back. If KeePassXC does not open a written 2.0 file, 2.x writing is given up at that step (and recorded).
 
 ## 5. Writing the result
 
 - **Format**: any version the reader accepts: 2.x, 3.0, 3.1, 4.0 or 4.1.
   - The default is **KDBX 4**: version 4.0, or 4.1 when the result holds data that only 4.1 can store (group tags, previous-parent-group, custom icon names or modification times, the entry quality-check flag). This matches KeePass's rule of writing the lowest version that holds the data
   - The user can pick an exact version instead: `--format` in the CLI, a version menu on the GUI's Write screen
-  - The differences between 2.x, 3.0 and 3.1 that matter for writing are established from the KeePass 2 source during M3 and recorded in §4.5. Until then, writing those versions is not specified
+  - 2.x, 3.0 and 3.1 are written with one layout, differing in the version number (§4.5)
 - **Data the chosen version cannot hold**: when the result holds something the chosen version has no place for, the write is refused with `OutputVersionLosesData`. The error lists what would be lost and on which items. Examples:
   - for 3.x and 2.x: custom data on groups and entries, the `PublicCustomData` header field, and the 4.1 fields
   - for 4.0: the 4.1 fields
@@ -455,6 +476,6 @@ These decisions were proposed by Claude and confirmed or changed by the user on 
 - **A7, History**: confirmed. The version not chosen is added to the entry's history
 - **A8, No stored state**: confirmed. The GUI keeps no state between runs
 - **A9, ArcFourVariant**: confirmed. The ArcFourVariant inner stream is rejected
-- **A10, Old versions**: **changed by the user.** KDBX 2.x and 3.x are implemented by Passbank itself, from the format documentation and from the permissively licensed implementations of section 4.1, with no old KeePass needed to make fixtures (3.1 fixtures come from KeePassXC if it can make them, and from the test files of the permissively licensed implementations otherwise). If step 3.1 finds that the format of a version cannot be established with confidence from those sources, that version is **given up**: it is removed from this spec and from the plan, and the removal is recorded in `docs/IMPLEMENTED.md`
+- **A10, Old versions**: **changed by the user.** KDBX 2.x and 3.x are implemented by Passbank itself, from the format documentation and from the permissively licensed implementations of section 4.1, with no old KeePass needed to make fixtures (3.1 fixtures come from KeePassXC if it can make them, and from the test files of the permissively licensed implementations otherwise). If step 3.1 finds that the format of a version cannot be established with confidence from those sources, that version is **given up**: it is removed from this spec and from the plan, and the removal is recorded in `docs/IMPLEMENTED.md` **Outcome of step 3.1 (2026-11-05):** nothing is given up. The three versions share one container and one XML dialect (section 4.5), four independent sources agree, and 3.1 has real files from KeePass and KeePassXC; 2.x and 3.0 are verified by KeePassXC reading what Passbank writes (M5)
 - **A11, Lossy output versions**: confirmed. Writing a version that cannot hold the result's data is refused unless the user accepts the listed losses
 - **A12, Argon2d**: confirmed. `golang.org/x/crypto/argon2` provides Argon2id but not Argon2d (KeePassXC's default KDF). Passbank keeps a copy of that package (BSD-3-Clause, license kept in `third_party/`) in `internal/third_party/argon2`, changed only to export Argon2d, and checked against the RFC 9106 test vectors. This is the only copied cryptographic code

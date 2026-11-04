@@ -236,3 +236,20 @@ history          2
   - An empty password is no password component (SPEC §12 now says so).
   - `--debug` is an option of every command; the other commands get it with their steps.
 
+## 3.1 Version differences
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-3.1-version-differences
+- **Summary:** SPEC §4.5 now describes KDBX 2.x, 3.0 and 3.1 completely (header fields and IDs, key derivation, stream start bytes, the hashed block stream, GZip, the inner streams, and every XML difference from KDBX 4: ISO times, `Meta/Binaries`, `Meta/HeaderHash`, no 4.1 elements, tags separated by commas) and records the decision. Sources: KeePassXC's `Kdbx3Reader.cpp`, `Kdbx3Writer.cpp` and `KeePass2.h` (GPL, read for behavior and put in own words), the three MIT implementations (gokeepasslib, keepass-rs, kdbxweb), and real files: every statement about the XML was checked on files from KeePass 2 and KeePassXC 2.7.
+- **Decision (A10):** nothing is given up. The sources dispatch on the major version only; the only difference between 2.x, 3.0 and 3.1 is that `HeaderHash` is required from 3.1 (KeePassXC). 3.1 has twelve real files from other projects plus the four KeePassXC fixtures; 2.x and 3.0 have none anywhere Passbank may use, so they are verified in M5 by KeePassXC reading the files Passbank writes (SPEC §4.5 says what happens if it does not).
+- **Main files:** docs/SPEC.md §4.5, internal/core/kdbx/testdata/ext/ (16 files), third_party/{keepass-rs,gokeepasslib,kdbxweb}/, NOTICE, testdata/FIXTURES.md, internal/core/kdbx/fixtures_test.go.
+- **Tests:** `TestFixturesAreListed` also covers `ext/` (listed, and version 3.1).
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - **Found a bug in step 2.5** while reading the sources: KDBX 4 files from KeePassXC may carry the AES-KDF ID `7c02bb82-79a7-4ac0-927d-114a00648238` instead of `c9d9f39a-…` (keepass-rs reads both as the same function and writes the second one "for compatibility"). Passbank rejected the first as an unknown KDF. The fix (accept both, write `c9d9f39a-…`) is made in step 3.2's branch with a test.
+  - KDBX 3.1 files exist with the ChaCha20 outer cipher (gokeepasslib, kdbxweb) and with the ChaCha20 inner stream (keepass-rs); the reader accepts them. The writer (M5) writes only what KeePass writes (AES-256 or Twofish with Salsa20).
+  - KeePassXC writes entry tags in 3.1 files separated by `,`; the reader splits at `;` and `,` (already so in step 2.6).
+

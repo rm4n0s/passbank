@@ -340,9 +340,10 @@ Every **Proof** item gives its exact command.
 **Tasks:**
 1. The KDBX3 header fields of §4.5, with AES-KDF (transform seed and rounds), and the master key from the master seed and the transformed key.
 2. Decryption, then the stream start bytes check (`WrongCredentials`), the hashed block stream (`FileCorrupt` on a hash mismatch), and decompression.
-3. Inner streams: Salsa20 and none; ArcFourVariant is handled as A9's answer says.
+3. Inner streams: Salsa20, ChaCha20 and none; ArcFourVariant is handled as A9's answer says. The header fields and their order are in SPEC §4.5; unknown IDs are skipped.
+4. Both AES-KDF IDs are accepted in KDBX 4 headers (`c9d9f39a-…` and `7c02bb82-…`, SPEC §4.5): this is a fix to step 2.5's reader and is made in this step's commit series.
 
-**Tests:** every 3.x and 2.x fixture opens to XML; wrong password; corruption at each layer; route tests.
+**Tests:** every 3.1 fixture, with those in `ext/`, opens to XML; hand-built 2.0 and 3.0 containers (the same layout, a different version field) open too; wrong password; corruption at each layer; route tests.
 
 ### 3.3 The KDBX 3 XML and `Open` for every version
 **Goal:** old XML into the same model; `kdbx.Open` and `passbank info` for every version.
