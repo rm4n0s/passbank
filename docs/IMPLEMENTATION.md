@@ -31,7 +31,7 @@ This file breaks the milestones of `docs/SPEC.md` §18 into small steps. Each st
    - no cgo, and no Glutter import outside `internal/gui` and `cmd/passbank-gui`
    - no secret in an error, a log, a golden file or a proof image
    - isolated paths in every test and script
-6. **Match KeePass.** For the file format, KeePass 2's behavior is the reference: its "KDBX 4" and "KDBX 4.1" pages and its source (`KeePassLib/Serialization/`). KeePassXC's source is GPL: read it to understand behavior, never copy from it. Where KeePass and KeePassXC disagree, write it down in the step's `IMPLEMENTED.md` entry and follow the spec.
+6. **Match KeePass.** For the file format, KeePass 2's behavior is the reference: its "KDBX 4" and "KDBX 4.1" pages and its source (`KeePassLib/Serialization/`). KeePass's and KeePassXC's sources are GPL: read them to understand behavior, never copy from them. MIT-licensed implementations (gokeepasslib, keepass-rs, kdbxweb) may be read, and their test files used with their license kept in `third_party/`. Where KeePass and KeePassXC disagree, write it down in the step's `IMPLEMENTED.md` entry and follow the spec.
 7. **Glutter gaps.** When Glutter is missing something or has a bug:
    - work around it in Passbank, and mark the code with `// Glutter: <what and why>`
    - add an entry to `docs/GLUTTER-ISSUES.md`, creating the file if needed
@@ -134,8 +134,8 @@ Every **Proof** item gives its exact command.
 | M3 Read KDBX 2.x and 3.x | 3.1–3.3 |
 | M4 Write KDBX 4 | 4.1–4.4 |
 | M5 Write KDBX 2.x and 3.x | 5.1–5.3 |
-| M6 Diff and plan | 6.1–6.6 |
-| M7 Merge | 7.1–7.5 |
+| M6 Diff and plan | 6.1–6.5 |
+| M7 Merge | 7.1–7.6 |
 | M8 GUI | 8.1–8.7 |
 | M9 Release | 9.1–9.2 |
 
@@ -266,7 +266,7 @@ Every **Proof** item gives its exact command.
    - one with groups, entries, custom fields, protected fields, attachments, history (several edits of one entry) and a recycle bin
    - one with a key file only, and one with a password and a key file
    - one per KDF its options reach
-3. For each fixture `keepassxc-cli` can't make (a cipher or KDF it has no option for, KDBX 3.1, 4.1-only fields, unknown XML, custom icons, custom data), write a **manual check** in `docs/MANUAL-CHECKS.md`. It gives the exact KeePassXC menu steps, the password, and the path to save to. Also check whether a KeePassXC import of an XML file can produce the unknown-XML fixture.
+3. For each fixture `keepassxc-cli` can't make (a cipher or KDF it has no option for, 4.1-only fields, unknown XML, custom icons, custom data; the KDBX 3.x fixtures wait for step 3.1), write a **manual check** in `docs/MANUAL-CHECKS.md`. It gives the exact KeePassXC menu steps, the password, and the path to save to. Also check whether a KeePassXC import of an XML file can produce the unknown-XML fixture.
 4. `internal/core/kdbx/testdata/FIXTURES.md`: one line per fixture, with what made it, the program version, the password and key file, and what it holds.
 
 **Done when:** the fixtures `keepassxc-cli` can make are committed, every other one has a manual check, and FIXTURES.md lists them all. Steps that need a pending fixture skip their test with `t.Skip("fixture pending, see docs/MANUAL-CHECKS.md")`, and the manual check names that test so the skip is removed when the fixture arrives.
@@ -321,13 +321,20 @@ Every **Proof** item gives its exact command.
 ## M3: Read KDBX 2.x and 3.x
 
 ### 3.1 Version differences
-**Goal:** SPEC §4.5 written, and the old fixtures settled.
-**Read:** SPEC §4.5, §19 (A10's answer); KeePass 2 source (`KdbxFile.cs`, `KdbxFile.Read.cs`, `KdbxFile.Write.cs`; the version constants and every `if (m_uFileVersion …)` branch), at its latest release and at 2.19 (the last 2.x-format writer) when available.
+**Goal:** SPEC §4.5 written from public sources, and a decision on whether KDBX 2.x and 3.x can be built (SPEC §19, A10).
+**Read:** SPEC §4.1, §4.5, §19 (A10); the sources below.
+**Reference:**
+- KeePass's format pages, and its source (`KeePassLib/Serialization/KdbxFile*.cs`, with the version constants and every `if (m_uFileVersion …)` branch), read for behavior only because it is GPL
+- KeePassXC's C++ (`src/format/Kdbx3Reader.cpp`, `Kdbx3Writer.cpp`, `KdbxXmlReader.cpp`, `KdbxXmlWriter.cpp`), also GPL: read for behavior only
+- the permissive implementations, which may be read freely: gokeepasslib (Go, MIT), keepass-rs (Rust, MIT) and kdbxweb (JavaScript, MIT). Fetch each with `git clone --depth 1` into a scratch folder, check its `LICENSE`, and delete the clone afterwards
 **Tasks:**
-1. Write SPEC §4.5: for 2.x, 3.0 and 3.1, the header fields, the payload framing, the XML elements and formats (times, binaries, `HeaderHash`), and how each differs from the next version. Cite the KeePass source file and the condition for each difference.
-2. Settle the fixtures by A10's answer: real 2.x and 3.0 fixtures from the user (as manual checks, like 2.4), or the marking A10 describes. Make the 3.1 fixtures from KeePassXC if 2.4 didn't.
+1. Write SPEC §4.5 for 2.x, 3.0 and 3.1: the header fields, the payload framing, the XML elements and formats (times, binaries, `HeaderHash`), and how each version differs from the next. Cite the source and the condition for each difference. Write it in your own words, not translated from any GPL code.
+2. Decide per version, and write the decision in §4.5 and in this step's `IMPLEMENTED.md` entry:
+   - **Build it** when at least two independent sources agree on every difference, and a real file or test vector exists to check the reader against.
+   - **Give it up** otherwise (the rule of A10): remove that version from SPEC §1, §2, §4.1 and §5, remove it from steps 3.2, 3.3, 5.1, 5.2 and 5.3 and from the tests of M4, and say so in the report. A version given up is rejected with `VersionUnsupported`.
+3. Fixtures: take real 3.1 files from KeePassXC if 2.4 produced them, and otherwise copy the test files of the permissive implementations (with their passwords and licenses, in `third_party/` and in FIXTURES.md). Passbank's own writer (M5) is never the only check of its reader: every version built has at least one file Passbank did not write.
 
-**Done when:** §4.5 is complete and cites a source for every difference, and FIXTURES.md lists the old-version fixtures or the decision. The spec change is in this step's commit.
+**Done when:** §4.5 is complete and cites sources, every version has a decision, and FIXTURES.md lists the old-version fixtures. The spec and plan changes are in this step's commit.
 
 ### 3.2 The KDBX 3 container
 **Goal:** from a 2.x or 3.x file to decrypted XML.
@@ -437,23 +444,14 @@ Every **Proof** item gives its exact command.
 
 ### 6.1 Matching by UUID
 **Goal:** `internal/core/diff` pairs items by UUID, and pairs the recycle bins.
-**Read:** SPEC §7 (steps 1 and 2), §3.
+**Read:** SPEC §7, §3.
 **Tasks:**
 1. `diff.Match(a, b *model.Database) Matching`: entry pairs, group pairs, and the unpaired items of each side, wherever they are in the tree.
 2. The recycle-bin rule: the two recycle-bin groups are a pair even with different UUIDs.
 
 **Tests:** tables of small databases built in the test (with `modeltest` helpers), covering moved items, same UUID in different groups, and the recycle bins.
 
-### 6.2 Probable matches
-**Goal:** SPEC §7 step 3, as A2's answer says.
-**Read:** SPEC §7.
-**Tasks:**
-1. Normalization: trimmed, case-folded (`golang.org/x/text/cases`), and the URL reduced to its host without `www.` with `net/url`. That package only parses; the archtest rule bans `net`, not `net/url`.
-2. Pair only when each side has exactly one candidate.
-
-**Tests:** unique matches, ambiguous candidates on either side, different hosts, entries without a URL.
-
-### 6.3 Comparison and changes
+### 6.2 Comparison and changes
 **Goal:** the change list of SPEC §8.
 **Read:** SPEC §8.
 **Tasks:**
@@ -464,7 +462,7 @@ Every **Proof** item gives its exact command.
 
 **Tests:** one table per kind; field-level differences named correctly; stable order across runs; equal entries are not listed.
 
-### 6.4 Defaults and rules
+### 6.3 Defaults and rules
 **Goal:** `internal/core/plan`: choices, defaults and rules, as SPEC §8 and §9 describe.
 **Read:** SPEC §8, §9.
 **Tasks:**
@@ -473,7 +471,7 @@ Every **Proof** item gives its exact command.
 
 **Tests:** every kind under every rule; ties go to A; deletion defaults by time.
 
-### 6.5 The plan file
+### 6.4 The plan file
 **Goal:** writing and reading plan files exactly as SPEC §11 shows.
 **Read:** SPEC §11, §15.
 **Tasks:**
@@ -483,14 +481,14 @@ Every **Proof** item gives its exact command.
 
 **Tests:** write then read gives the same plan; hand-written files with every error; titles with spaces, `#` and non-ASCII characters; CRLF line endings accepted.
 
-### 6.6 `passbank diff`
+### 6.5 `passbank diff`
 **Goal:** the `diff` command of SPEC §12.
 **Read:** SPEC §12.
 **Tasks:**
 1. `passbank diff A B [--prefer …] [-o PLAN] [--no-titles]`, with the credential options for `a` and `b`.
 2. The plan goes to `-o` (refusing to overwrite unless `--force`) or to stdout; a summary of counts by kind goes to stderr.
 
-**Tests:** CLI goldens on fixture pairs built for merging (`internal/cli/testdata/merge/`: two related databases with one change of every kind, and two unrelated ones for probable matches).
+**Tests:** CLI goldens on fixture pairs built for merging (`internal/cli/testdata/merge/`: two related databases with one change of every kind, built once by a generator in `internal/core/model/modeltest` and committed).
 **Proof:** method C, the golden plan of the related pair.
 
 ---
@@ -531,7 +529,7 @@ Every **Proof** item gives its exact command.
 **Goal:** the `merge` command of SPEC §12.
 **Read:** SPEC §5, §12, §15.
 **Tasks:**
-1. `passbank merge A B -o OUT` with `--plan` or `--prefer`, plus `--format`, `--allow-loss`, `--settings-from`, `--credentials`, `--encryption` and `--force`.
+1. `passbank merge A B -o OUT` with `--plan` or `--prefer` (without either: for now a usage error, `// TODO(step 7.5)`), plus `--format`, `--allow-loss`, `--settings-from`, `--credentials`, `--encryption` and `--force`.
 2. Credentials for the output:
    - `a` and `b` reuse the composite key that unlocked that input
    - `new` asks for a password twice (`PasswordsDoNotMatch`), or takes `--keyfile-out`, `--password-file-out` or `--no-password-out`
@@ -540,10 +538,22 @@ Every **Proof** item gives its exact command.
 
 **Tests:** CLI goldens for every option on the merge fixture pairs; the written output opens with `Open`, and its content matches the expected merge (checked with `model.Diff` against a model built in the test).
 
-### 7.5 End-to-end merges
+### 7.5 Interactive choices
+**Goal:** `passbank merge` without `--plan` and `--prefer`, as SPEC §12.1 describes.
+**Read:** SPEC §8, §9, §12, §12.1, §14, §15.
+**Tasks:**
+1. `internal/cli/review`: the interactive loop over `[]plan.Change` and a `plan.Plan`, reading keys from the `term` interface (a line per answer is enough; single-key reading is not needed). It shows each change as §12.1 lists, with the non-secret standard fields side by side and the other differing fields by name only.
+2. The keys of §12.1: choices per kind, Enter for the default, `v` (protected values printed for that change only, never stored or logged), `p` (previous), `r` (a rule for the rest), `?`, `q`. An invalid key asks again.
+3. Dropping a group that still holds kept items asks the follow-up question of §12.1.
+4. After the last change: the summary, then the "Write OUT? [y/N]" confirmation. Replace the 7.4 usage error with this path. Without a terminal, fail with `ChoicesNeedTerminal`.
+
+**Tests:** in-process CLI tests with a fake terminal that plays scripted answers: accept all defaults (equals `--prefer newer`), every key, going back, `r`, `q` (nothing written, exit 1), the group question both ways, `v` printing protected values once and never logging them, no terminal; CLI goldens of the prompts on the merge fixture pairs.
+**Proof:** method C, the golden transcript of an interactive merge of the related pair.
+
+### 7.6 End-to-end merges
 **Goal:** the whole CLI path, checked against KeePassXC.
 **Tasks:**
-1. End-to-end tests, each as `diff`, then an edited plan, then `merge`, then `Open`: one per rule, plus a hand-edited plan.
+1. End-to-end tests, each as `diff`, then an edited plan, then `merge`, then `Open`: one per rule, plus a hand-edited plan. One more test drives the interactive merge with scripted answers and compares its output with the same choices given as a plan.
 2. Interop: the merged files open in KeePassXC, with the expected entries (`keepassxc-cli ls -R`, `show`).
 3. Large inputs: two generated databases of 10,000 entries each. `diff` and `merge`, without the KDF, take under 2 s; record the time in `IMPLEMENTED.md`.
 

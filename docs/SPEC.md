@@ -1,6 +1,6 @@
 # Passbank specification
 
-This document is the source of truth for Passbank. Where it says **(assumed, A<n>)**, the decision is a proposal that the user has not confirmed yet; section 19 lists them. A step that depends on an assumption confirms it with the user before it starts.
+This document is the source of truth for Passbank. Section 19 logs the decisions the user confirmed or changed on 2026-11-04.
 
 ## 1. Purpose
 
@@ -55,7 +55,7 @@ Identifiers, to be checked against the fixtures:
 - KDFs: AES-KDF `c9d9f39a-628a-4460-bf74-0d08c18a4fea`, Argon2d `ef636ddf-8c29-444b-91f7-a9a403e30a0c`, Argon2id `9e298b19-56db-4773-b23d-fc3ec6f0a1e6`
 - Inner stream IDs: 0 none, 1 ArcFourVariant, 2 Salsa20, 3 ChaCha20
 
-Format references: KeePass's "KDBX 4" and "KDBX 4.1" pages (keepass.info/help/kb/kdbx_4.html, kdbx_4.1.html) and the KeePass 2 source. KeePassXC's source is GPL: read it to understand behavior, never copy from it (Passbank is MIT).
+Format references: KeePass's "KDBX 4" and "KDBX 4.1" pages (keepass.info/help/kb/kdbx_4.html, kdbx_4.1.html) and the KeePass 2 source. KeePass's and KeePassXC's sources are GPL: read them to understand behavior, never copy from them (Passbank is MIT). MIT-licensed implementations may also be read, and their test files used with their license kept in `third_party/`: gokeepasslib (Go), keepass-rs (Rust) and kdbxweb (JavaScript).
 
 - **Compression**: none or GZip
 - **Version check**: files with major version 2 or 3 go through the KDBX3 reader, and files with major version 4 through the KDBX4 reader. A major version above 4 is rejected with `VersionUnsupported`
@@ -110,16 +110,16 @@ To be written during M3: the differences between KDBX 2.x, 3.0 and 3.1 (header f
   - for 3.x and 2.x: custom data on groups and entries, the `PublicCustomData` header field, and the 4.1 fields
   - for 4.0: the 4.1 fields
 
-  The user can accept the loss explicitly: `--allow-loss` in the CLI, or a confirmation dialog in the GUI that shows the same list. Without that, nothing is written **(assumed, A11)**
+  The user can accept the loss explicitly: `--allow-loss` in the CLI, or a confirmation dialog in the GUI that shows the same list. Without that, nothing is written
 - **Encryption per version**:
   - KDBX 3.x and 2.x support only AES-KDF and use the Salsa20 inner stream, with AES-256 or Twofish as the outer cipher
   - KDBX 4.x supports every cipher and KDF of §4.1 and uses the ChaCha20 inner stream
   - When the encryption settings taken from an input are not possible in the chosen version (for example Argon2 for 3.1), the write is refused with `EncryptionNotInVersion`, and the user picks the defaults or the other input's settings
 - **Encryption settings** (cipher, KDF and its parameters, compression):
   - default: copied from A, if A is KDBX4
-  - otherwise, the defaults: AES-256, GZip, and Argon2id with 64 MiB of memory, 2 lanes and 10 iterations for KDBX 4; AES-KDF with 2,000,000 rounds for KDBX 3.x and 2.x **(assumed, A5)**
+  - otherwise, the defaults: AES-256, GZip, and Argon2id with 64 MiB of memory, 2 lanes and 10 iterations for KDBX 4; AES-KDF with 2,000,000 rounds for KDBX 3.x and 2.x
   - the user can pick B's settings instead, or the defaults
-- **Credentials**: the default is A's credentials, reused from the composite key that unlocked A, so the user doesn't type them again **(assumed, A4)**. The user can pick B's instead, or new ones (a password typed twice and/or a key file)
+- **Credentials**: the default is A's credentials, reused from the composite key that unlocked A, so the user doesn't type them again. The user can pick B's instead, or new ones (a password typed twice and/or a key file)
 - **Fresh secrets**: seeds, IVs and the inner stream key are new random values from `crypto/rand` on every write
 - **Safe writing**:
   - the output is written to a temporary file in the target folder with mode `0600`, synced, and renamed into place, and then the folder is synced
@@ -153,9 +153,8 @@ To be written during M3: the differences between KDBX 2.x, 3.0 and 3.1 (header f
 Matching pairs each item of A with at most one item of B.
 1. **By UUID**: items with the same UUID are a pair, wherever they are in the tree
 2. **Recycle bins**: A's recycle-bin group and B's recycle-bin group are a pair even when their UUIDs differ
-3. **Probable matches** (entries only) **(assumed, A2)**: after step 1, an entry of A without a pair and an entry of B without a pair are a *probable pair* when their normalized title, username and URL host are equal, and each has exactly one such candidate on the other side.
-   - Normalized means: trimmed, case-folded, and the URL reduced to its host without `www.`
-   - Two or more candidates on either side make no pair, so the entries stay "only in A" and "only in B"
+
+Matching is by UUID only. Two databases created separately share no UUIDs, so every entry of each is "only in" its input, and Passbank never guesses that two entries with the same title are the same account. Databases that come from one another (copies, backups, the same database edited on two devices) keep their UUIDs and pair up.
 
 ## 8. Comparison and changes
 
@@ -176,13 +175,12 @@ Each unequal or unpaired item is one **change** of one kind:
 | `only-a` | Entry or group only in A | `keep`, `drop` | `keep` |
 | `only-b` | Entry or group only in B | `keep`, `drop` | `keep` |
 | `differs` | Paired entries (by UUID) that are not equal | `take-a`, `take-b`, `both`, `drop` | the newer by last modification time; A on a tie |
-| `probable` | A probable pair (section 7) | `take-a`, `take-b`, `both`, `drop` | the newer, as for `differs` **(assumed, A2)** |
 | `deleted-in-a` | Entry in B whose UUID is in A's deleted objects | `keep`, `drop` | `drop` if the deletion is newer than B's last modification, else `keep` |
 | `deleted-in-b` | The same, the other way round | `keep`, `drop` | as above |
 | `group-differs` | Paired groups whose own properties differ (name, notes, icon, tags, expiry, settings, parent) | `take-a`, `take-b` | the newer |
-| `settings` | The databases' `Meta` settings differ (name, description, default username, color, history limits, recycle-bin settings, memory protection) | `take-a`, `take-b` | `take-a` **(assumed, A6)** |
+| `settings` | The databases' `Meta` settings differ (name, description, default username, color, history limits, recycle-bin settings, memory protection) | `take-a`, `take-b` | `take-a` |
 
-Choices are made per whole entry **(assumed, A3)**; choosing individual fields of an entry is not in 1.0.
+Choices are made per whole entry; choosing individual fields of an entry is not in 1.0.
 
 What each choice means:
 - **`both`** keeps both entries. A's copy keeps its UUID; B's copy gets a new UUID and is placed in the group that B had it in
@@ -195,9 +193,9 @@ Changes are listed in a stable order: by kind (in the table's order), then by gr
 
 A plan starts from the defaults in section 8. The user can then change choices one at a time, or apply a **rule** to many changes at once:
 - `newer`: the defaults
-- `a`: `take-a` for `differs`, `probable`, `group-differs` and `settings`; `keep` for `only-a`; `drop` for `only-b`; and for deletions, A's state wins (if A deleted the entry, `drop`)
+- `a`: `take-a` for `differs`, `group-differs` and `settings`; `keep` for `only-a`; `drop` for `only-b`; and for deletions, A's state wins (if A deleted the entry, `drop`)
 - `b`: the mirror image of `a`
-- `union`: `keep` for everything only in one input, `both` for `differs` and `probable`, and the defaults for the rest
+- `union`: `keep` for everything only in one input, `both` for `differs`, and the defaults for the rest
 
 The same rule definitions are used by the CLI's `--prefer` and the GUI's bulk actions.
 
@@ -216,7 +214,7 @@ The order of children follows the chosen input; items from the other input are a
 ### 10.2 History
 
 - **Union**: the history of a kept entry is the union of both inputs' histories for that UUID, without duplicates (two versions with the same last modification time and equal content), sorted by last modification time
-- **The version not chosen**: when the chosen version differs from the other one, the other version is added to the history too **(assumed, A7)**, so the merge can be undone in any KeePass client
+- **The version not chosen**: when the chosen version differs from the other one, the other version is added to the history too, so the merge can be undone in any KeePass client
 - **No trimming**: history is not trimmed to the history limits. Clients trim on their next save
 
 ### 10.3 Deleted objects
@@ -249,14 +247,14 @@ keep    3f1c2a6e-5b2d-4d7e-9a3b-2c1d0e9f8a7b  # Email / Work mail
 drop    0b8e4d2c-1f3a-4c5b-8d6e-7f9a0b1c2d3e  # Games / Old forum
 # differs: password, url  (A 2026-10-01 12:00, B 2026-10-30 09:12)
 take-b  7d0e1c2b-3a4f-4e5d-9c8b-7a6f5e4d3c2b  # Banking / My bank
-# probable match
-both    1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d=9f8e7d6c-5b4a-4c3d-2e1f-0a9b8c7d6e5f  # Shopping / Store
+# differs: title
+both    1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d  # Shopping / Store
 settings take-a
 ```
 
 - **Header**: the first line holds the format version. Lines `a` and `b` hold the SHA-256 of the input files' bytes and their names
 - **Stale plans**: a plan whose hashes do not match the given inputs is rejected (`PlanStale`). A plan only fits the exact files it was made for
-- **One line per change**: each change has one line, `<choice> <item>`. A probable pair is written as `<A UUID>=<B UUID>`. Comments (`#` to the end of the line) and blank lines are ignored
+- **One line per change**: each change has one line, `<choice> <item>`. Comments (`#` to the end of the line) and blank lines are ignored
 - **Errors**:
   - a missing change is `PlanIncomplete`
   - an item that is not a change of these inputs is `PlanUnknownItem`
@@ -268,14 +266,14 @@ settings take-a
 
 ```
 passbank diff  A B [--prefer newer|a|b|union] [-o PLAN] [--no-titles]
-passbank merge A B -o OUT [--plan PLAN | --prefer newer|a|b|union]
+passbank merge A B -o OUT [--plan PLAN | --prefer newer|a|b|union]   (neither: interactive)
                [--format 4|4.1|4.0|3.1|3.0|2] [--allow-loss]
                [--settings-from a|b] [--credentials a|b|new] [--encryption a|b|default] [--force]
 passbank info  FILE
 ```
 
 - **`diff`**: unlocks A and B and writes a plan with the defaults (or the given rule) to `PLAN`, or to stdout. The user edits the plan, then runs `merge --plan`
-- **`merge`**: builds and writes the result. Without `--plan` it uses `--prefer`, which defaults to `newer`. `--format` picks the output version and defaults to `4` (4.0, or 4.1 when needed, as in §5); `--allow-loss` accepts the losses that a lower version causes. It prints a summary: the counts of each kind and choice, the output path and the format version
+- **`merge`**: builds and writes the result. With `--plan` or `--prefer` it runs without questions. With neither, it is **interactive** (section 12.1). `--format` picks the output version and defaults to `4` (4.0, or 4.1 when needed, as in §5); `--allow-loss` accepts the losses that a lower version causes. It prints a summary: the counts of each kind and choice, the output path and the format version
 - **`info`**: prints a file's KDBX version, cipher, KDF and its parameters, compression, and counts of groups, entries, attachments and history items. It needs the credentials, because the counts are inside the encrypted part
 - **Credentials**, for each input X (`a`, `b`) and for `out` when `--credentials new`:
   - `--keyfile-X PATH`
@@ -284,8 +282,34 @@ passbank info  FILE
   - otherwise the password is read without echo from `/dev/tty`; a new output password is asked twice
   - if there is no terminal, the error is `PasswordNeedsTerminal`
   - passwords are never accepted as arguments or environment variables
+- **Interactive input**: the password prompts and the interactive choices read from `/dev/tty` (the same terminal handle), so stdin and stdout stay free for pipes
 - **Output streams**: messages go to stderr; the plan (in `diff`) and the summaries go to stdout
 - **Exit codes**: `0` success, `1` failure, `2` usage error. Errors print one line with the message; `--debug` adds the route
+
+### 12.1 Interactive merge
+
+`passbank merge A B -o OUT` with neither `--plan` nor `--prefer` unlocks both inputs, prints the count of changes of each kind, and then goes through the changes one by one, in the stable order of section 8. For each change it shows:
+- its position (`[3/17]`), kind, group path and title
+- both modification times
+- the names of the fields that differ
+- the values of the non-secret standard fields that differ (Title, UserName, URL), side by side. Notes, custom fields, passwords and every other protected value are shown by name only
+
+Then it asks for a choice. The prompt lists only the choices the kind allows, one key each, with the default marked:
+
+| Key | Choice |
+|---|---|
+| `a` / `b` | take A / take B |
+| `t` | both (keep two) |
+| `k` | keep |
+| `d` | drop |
+| Enter | the default of section 8 |
+| `v` | show the protected values that differ, for this change only; they are printed once and kept nowhere |
+| `p` | go back to the previous change |
+| `r` | apply a rule of section 9 to this change and all the remaining ones |
+| `?` | help |
+| `q` | quit; nothing is written (exit code 1) |
+
+Dropping a group that still holds kept items asks "also drop the N items inside it? [y/N]"; answering no keeps the group. After the last change it prints the summary of section 12 and asks "Write OUT? [y/N]" before writing. Without a terminal, the command fails with `ChoicesNeedTerminal`, which tells the user to use `--plan` or `--prefer`.
 
 ## 13. Desktop application (`passbank-gui`)
 
@@ -317,7 +341,7 @@ Built on Glutter's `widgets` layer, without Material. One window, three screens:
    **Back** returns to Review with every choice intact.
 
 - **Debug flags**: debug builds (without `glutter_release`) accept `--dev-a PATH`, `--dev-b PATH` and `--dev-password-file PATH` to preload fixtures for display tests and proofs. Release builds don't have them, and no build accepts a password in an argument
-- **State**: the GUI keeps no state between runs: no recent files, no settings files **(assumed, A8)**
+- **State**: the GUI keeps no state between runs: no recent files, no settings files
 - **Leaving**: closing the window or going back to Open drops every unlocked database and its secrets
 
 ## 14. Security
@@ -342,6 +366,7 @@ Each failure has a Tag (see CLAUDE.md, "Error handling") and a message for the u
 | `KeyFileCorrupt` | "The key file <path> is damaged (its checksum does not match)" |
 | `FileCorrupt` | "<file> is damaged: <where>" |
 | `PlanStale`, `PlanIncomplete`, `PlanUnknownItem`, `PlanInvalidChoice`, `PlanSyntax`, `PlanGroupNotEmpty` | what is wrong, with the line or item |
+| `ChoicesNeedTerminal` | "There is no terminal to ask for choices; use --plan or --prefer" |
 | `OutputExists` | "<out> exists; use --force to replace it" |
 | `OutputVersionLosesData` | "KDBX <v> cannot store <what> of <n> items; choose KDBX 4 or accept the loss" |
 | `EncryptionNotInVersion` | "KDBX <v> does not support <cipher or KDF>; choose other encryption settings" |
@@ -386,7 +411,7 @@ Boundary rules, checked by `internal/archtest`:
 - **KDBX fixtures**: a database for every version, cipher, KDF and inner stream the reader accepts, plus databases with attachments, history, custom icons, custom data, 4.1 fields and unknown XML. They live in `internal/core/kdbx/testdata/` with their test passwords and key files. Each fixture has a line in `testdata/FIXTURES.md` saying what made it (program and version) and what it holds
 - **Round trip**: read every fixture, write it in every output version, read it back, and compare the models. A version that cannot hold the fixture's data must refuse with `OutputVersionLosesData`; with the loss accepted, everything except the listed data must survive
 - **Interoperability**: tests with the build tag `passbank_keepassxc` run `keepassxc-cli` against the written files of every version, and are skipped when it is not installed
-- **Diff, plan and merge**: table-driven, with databases built in the test, covering every kind, choice and rule, histories, deletions, recycle bins, probable matches and the plan-file errors
+- **Diff, plan and merge**: table-driven, with databases built in the test, covering every kind, choice and rule, histories, deletions, recycle bins and the plan-file errors
 - **CLI**: tested in-process with fake stdin, stdout, stderr and terminal, against golden text files
 - **GUI**: widget tests and golden images with `gluttertest`; a display test for the full flow, run in the headless compositor
 - **Fuzzing**: the container parser, the XML reader and the plan parser have seed corpora and fuzz tests
@@ -399,25 +424,25 @@ Boundary rules, checked by `internal/archtest`:
 4. **M4, Write KDBX 4**: 4.0 and 4.1, safe writing, read-back verification, round-trip and KeePassXC tests
 5. **M5, Write KDBX 2.x and 3.x**: the loss check, encryption limits per version
 6. **M6, Diff and plan**: matching, changes, rules, the plan file, `passbank diff`
-7. **M7, Merge**: applying a plan, `passbank merge`
+7. **M7, Merge**: applying a plan, `passbank merge`, the interactive choices
 8. **M8, GUI**: the three screens, plan load and save, display test
 9. **M9, Release**: README, release builds, a manual check against real databases
 
 `docs/IMPLEMENTATION.md` breaks these into steps.
 
-## 19. Assumptions to confirm
+## 19. Decisions log
 
-Each was decided by Claude without the user's confirmation. They stay assumptions until the user confirms or changes them. Step 1.1 of `docs/IMPLEMENTATION.md` asks the user about all of them at once and records the answers here.
+These decisions were proposed by Claude and confirmed or changed by the user on 2026-11-04 (step 1.1 of `docs/IMPLEMENTATION.md`).
 
-- **A1, How the CLI lets you choose**: a plan file plus rules (section 11, 12). Interactive prompts in the terminal are not in 1.0
-- **A2, Probable matches**: the second matching pass by title, username and URL host, and its default (the newer copy)
-- **A3, Per-entry choices**: you choose per whole entry; picking individual fields is not in 1.0
-- **A4, Output credentials**: A's credentials by default
-- **A5, Encryption defaults**: when A's settings aren't used: AES-256 with Argon2id at 64 MiB, 2 lanes and 10 iterations for KDBX 4; AES-KDF with 2,000,000 rounds for 3.x and 2.x
-- **A6, Database settings**: settings come from A by default and are one change
-- **A7, History**: the version not chosen is added to the entry's history
-- **A8, No stored state**: the GUI keeps no state between runs
-- **A9, ArcFourVariant**: the ArcFourVariant inner stream is rejected (no known KeePass version writes it by default)
-- **A10, Old fixtures**: real test fixtures for KDBX 2.x and 3.0 need an old KeePass 2.x. Passbank's own writer (M5) can produce these versions, but a reader tested only against Passbank's writer proves little, because both could share the same misunderstanding of the format. If no old KeePass is available, the 2.x and 3.0 support is marked as checked only against Passbank's own files, and at least one real 3.1 file from KeePassXC is a fixture
-- **A11, Lossy output versions**: writing a version that cannot hold the result's data is refused unless the user accepts the listed losses
-- **A12, Argon2d**: `golang.org/x/crypto/argon2` provides Argon2id but not Argon2d (KeePassXC's default KDF). Its code supports Argon2d internally without exporting it. Passbank keeps a copy of that package (BSD-3-Clause, license kept in `third_party/`) in `internal/third_party/argon2`, changed only to export Argon2d, and checked against the RFC 9106 test vectors. This is the only copied cryptographic code
+- **A1, How the CLI lets you choose**: **changed by the user.** The CLI is **interactive**: `passbank merge` asks about each change on the terminal (section 12.1). The plan file and `--prefer` rules stay, as the way to run without questions and in scripts
+- **A2, Matching**: **changed by the user.** Entries and groups pair **by UUID only** (section 7). There is no matching by title, username or URL
+- **A3, Per-entry choices**: confirmed. You choose per whole entry; picking individual fields is not in 1.0
+- **A4, Output credentials**: confirmed. A's credentials by default
+- **A5, Encryption defaults**: confirmed. When A's settings aren't used: AES-256 with Argon2id at 64 MiB, 2 lanes and 10 iterations for KDBX 4; AES-KDF with 2,000,000 rounds for 3.x and 2.x
+- **A6, Database settings**: confirmed. Settings come from A by default and are one change
+- **A7, History**: confirmed. The version not chosen is added to the entry's history
+- **A8, No stored state**: confirmed. The GUI keeps no state between runs
+- **A9, ArcFourVariant**: confirmed. The ArcFourVariant inner stream is rejected
+- **A10, Old versions**: **changed by the user.** KDBX 2.x and 3.x are implemented by Passbank itself, from the format documentation and from the permissively licensed implementations of section 4.1, with no old KeePass needed to make fixtures (3.1 fixtures come from KeePassXC if it can make them, and from the test files of the permissively licensed implementations otherwise). If step 3.1 finds that the format of a version cannot be established with confidence from those sources, that version is **given up**: it is removed from this spec and from the plan, and the removal is recorded in `docs/IMPLEMENTED.md`
+- **A11, Lossy output versions**: confirmed. Writing a version that cannot hold the result's data is refused unless the user accepts the listed losses
+- **A12, Argon2d**: confirmed. `golang.org/x/crypto/argon2` provides Argon2id but not Argon2d (KeePassXC's default KDF). Passbank keeps a copy of that package (BSD-3-Clause, license kept in `third_party/`) in `internal/third_party/argon2`, changed only to export Argon2d, and checked against the RFC 9106 test vectors. This is the only copied cryptographic code
