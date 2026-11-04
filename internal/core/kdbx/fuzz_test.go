@@ -75,8 +75,8 @@ func FuzzParseInnerHeader(f *testing.F) {
 
 func FuzzReadBlocks(f *testing.F) {
 	base := bytes.Repeat([]byte{3}, 64)
-	f.Add(buildBlocks(base, bytes.Repeat([]byte("d"), 100), 30))
-	f.Add(buildBlocks(base, nil, 30))
+	f.Add(writeBlocks(base, bytes.Repeat([]byte("d"), 100), 30))
+	f.Add(writeBlocks(base, nil, 30))
 	f.Add([]byte{})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if out, err := readBlocks(data, base, 1<<20); err == nil && len(out) > 1<<20 {

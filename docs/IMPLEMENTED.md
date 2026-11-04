@@ -301,3 +301,18 @@ history          2
   - `MinVersion` also returns 4.1 for modification times of custom data items and for the settings-changed time, which SPEC §5 now lists.
   - Raw XML is written without layout, because the text of a node is data; the rest of the XML is written with a line break after each element, which the reader ignores.
 
+## 4.2 The KDBX 4 container writer
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-4.2-container-writer
+- **Summary:** `kdbx.Encode(ctx, db, version, settings, creds)` returns the bytes of a KDBX 4.0 or 4.1 file. `EncryptionSettings` (cipher, KDF with parameters, compression), `DefaultSettings(version)` (A5: AES-256, GZip, Argon2id 64 MiB / 2 lanes / 10 iterations for 4.x; AES-KDF with 2,000,000 rounds for 3.x and 2.x) and `SettingsOf(info)` (the settings of a file that was read). Every write draws a new master seed, IV, KDF seed and inner stream key (64 bytes, ChaCha20) from `crypto/rand`; the header carries its SHA-256 and HMAC, the inner header the attachments, and the encrypted payload is split into 1 MiB HMAC blocks. The AES-KDF is always written with the ID `c9d9f39a-…`. The helpers the test builder had (`encodeVariant`, `field`, `writeBlocks`) moved to `wire.go`.
+- **Main files:** internal/core/kdbx/{encode,wire}.go.
+- **Tests:** every cipher × KDF × compression writes a file that `Open` reads back to an equal model with the settings that were asked for, and a wrong password does not open it; nine fixtures (4.0, 4.1, 3.1, unknown XML, public custom data, attachments, Cyrillic) written at `MinVersion` and read back equal; 4.0 leaves out the 4.1 fields and 4.1 keeps them; two writes differ in every seed, in the IV and in the encrypted values, and give equal models; a 3 MiB incompressible attachment spans four blocks; key file only, password and key file, a Unicode password; the caller's credentials are not wiped; the defaults and `SettingsOf` (a Twofish/AES-KDF file is written again with its settings); eleven error cases with routes (version 5 and 4.2, no database, an unknown cipher, compression and KDF, Argon2 without memory, AES-KDF without rounds, no credentials, cancellation, a missing attachment) and a failing random source at each of the four draws.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none (KeePassXC opens the files in step 4.4's interop tests).
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - `Encode` writes only KDBX 4 until step 5.2 adds the old container; other versions give `VersionUnsupported`.
+  - A database with an empty `Meta.Generator` is written with the generator `Passbank`, so it does not read back equal; the merge sets the generator.
+

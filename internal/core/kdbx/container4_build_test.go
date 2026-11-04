@@ -162,7 +162,7 @@ func TestGunzipLimit(t *testing.T) {
 
 func TestReadBlocksLimit(t *testing.T) {
 	base := bytes.Repeat([]byte{3}, 64)
-	stream := buildBlocks(base, bytes.Repeat([]byte("d"), 100), 30) // 4 blocks and the end block
+	stream := writeBlocks(base, bytes.Repeat([]byte("d"), 100), 30) // 4 blocks and the end block
 	if out, err := readBlocks(stream, base, 100); err != nil || len(out) != 100 {
 		t.Errorf("at the limit: %d bytes, %v", len(out), err)
 	}

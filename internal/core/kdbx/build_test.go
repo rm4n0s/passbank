@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/binary"
 	"testing"
@@ -19,22 +18,6 @@ import (
 // from the format of SPEC §4.1 with the primitives of the crypto package and has
 // nothing to do with the writer of step 4.2. Its files are checked against the
 // reader here, and the format itself is checked against real files by the fixtures.
-
-// encodeVariant encodes a VariantDictionary.
-func encodeVariant(items ...variantItem) []byte {
-	out := []byte{0x00, 0x01}
-	for _, it := range items {
-		out = append(out, it.Type)
-		out = binary.LittleEndian.AppendUint32(out, uint32(len(it.Key)))
-		out = append(out, it.Key...)
-		out = binary.LittleEndian.AppendUint32(out, uint32(len(it.Value)))
-		out = append(out, it.Value...)
-	}
-	return append(out, 0)
-}
-
-func u32(v uint32) []byte { return binary.LittleEndian.AppendUint32(nil, v) }
-func u64(v uint64) []byte { return binary.LittleEndian.AppendUint64(nil, v) }
 
 // argonParams are small Argon2id parameters for built files.
 func argonParams(salt []byte) []variantItem {
@@ -68,11 +51,6 @@ type build4 struct {
 	Raw     bool
 	// BlockSize is the size of the blocks of the stream (1 MiB when 0).
 	BlockSize int
-}
-
-// field encodes a header field.
-func field(id byte, data []byte) []byte {
-	return append(append([]byte{id}, u32(uint32(len(data)))...), data...)
 }
 
 // innerHeaderBytes encodes an inner header with the ChaCha20 stream and the
@@ -179,30 +157,7 @@ func (b build4) build(t testing.TB) []byte {
 	if blockSize == 0 {
 		blockSize = 1 << 20
 	}
-	return append(out, buildBlocks(hmacKey, ciphertext, blockSize)...)
-}
-
-// buildBlocks writes the HMAC block stream of data in blocks of at most size
-// bytes, ending with the block of size zero.
-func buildBlocks(base, data []byte, size int) []byte {
-	var out []byte
-	for index := uint64(0); ; index++ {
-		n := min(size, len(data))
-		block := data[:n]
-		data = data[n:]
-		m := hmac.New(sha256.New, blockKey(base, index))
-		var prefix [12]byte
-		binary.LittleEndian.PutUint64(prefix[:8], index)
-		binary.LittleEndian.PutUint32(prefix[8:], uint32(n))
-		m.Write(prefix[:])
-		m.Write(block)
-		out = append(out, m.Sum(nil)...)
-		out = append(out, u32(uint32(n))...)
-		out = append(out, block...)
-		if n == 0 {
-			return out
-		}
-	}
+	return append(out, writeBlocks(hmacKey, ciphertext, blockSize)...)
 }
 
 // rawHeader makes the bytes of an outer header from encoded fields: the
