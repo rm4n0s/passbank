@@ -10,8 +10,9 @@ import (
 const DefaultGenerator = "Passbank"
 
 // Fit returns a copy of the database as a file of the version holds it: what the
-// version cannot store is removed (the 4.1 fields for KDBX 4.0) and an empty
-// generator is the default. A database that is read back from the file Encode
+// version cannot store is removed (the 4.1 fields for KDBX 4.0), the contents that
+// no entry uses are left out of the pool (a file keeps only what entries refer
+// to), and an empty generator is the default. A database that is read back from the file Encode
 // wrote for the version is equal to it, which is how the output is verified. It
 // does not decide whether the loss is allowed (SPEC §5).
 func Fit(db *model.Database, version Version) *model.Database {
@@ -19,6 +20,7 @@ func Fit(db *model.Database, version Version) *model.Database {
 	if db.Meta.Generator == "" {
 		db.Meta.Generator = DefaultGenerator
 	}
+	dropUnusedBinaries(db)
 	if version.Major == 4 && version.Minor >= 1 {
 		return db
 	}
@@ -49,4 +51,28 @@ func Fit(db *model.Database, version Version) *model.Database {
 		return true
 	})
 	return db
+}
+
+// dropUnusedBinaries removes the contents of the pool that no entry or history
+// item refers to.
+func dropUnusedBinaries(db *model.Database) {
+	used := map[model.BinaryKey]bool{}
+	mark := func(e *model.Entry) {
+		for _, a := range e.Attachments {
+			used[a.Binary] = true
+		}
+	}
+	db.WalkEntries(func(_ *model.Group, e *model.Entry) bool {
+		mark(e)
+		for _, h := range e.History {
+			mark(h)
+		}
+		return true
+	})
+	for key, b := range db.Binaries {
+		if !used[key] {
+			b.Data.Wipe()
+			delete(db.Binaries, key)
+		}
+	}
 }

@@ -332,3 +332,19 @@ history          2
   - `Write` reports `WriteCancelled` for a cancellation during the verification, not `WriteVerifyFailed`.
   - After `OutputSyncFailed` the file is in place and complete (SPEC §15 says so).
 
+## 4.4 Round trip and interoperability
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-4.4-round-trip
+- **Summary:** proof that what Passbank writes keeps everything and opens in KeePassXC. `internal/core/model/modeltest.Random(seed, options)` makes random databases (trees up to depth 3 with several groups and entries each, standard and custom and protected fields with awkward characters, shared and empty and protected attachments, histories, custom data, custom icons, tri-states, auto-type, unknown XML on the file, Meta, groups and entries, public custom data, 4.1 fields on request), determined by the seed. `kdbx.Fit` also leaves out of the pool the contents that no entry uses, as a file does.
+- **Main files:** internal/core/model/modeltest/, internal/core/kdbx/{roundtrip,property,interop}_test.go.
+- **Tests:** all 27 fixtures of every version (11 KDBX 4, 16 KDBX 3.1) are read, written as KDBX 4 (4.0 or 4.1 by `MinVersion`) and read back, with `model.Diff` empty; 60 random databases (every second with 4.1 fields) through random cipher × KDF × compression equal after the round trip, and in the version `MinVersion` says; 30 random databases with 4.1 fields written as 4.0 come back equal to `Fit(db, 4.0)`; the generator is deterministic, bounded, has unique UUIDs, valid references, and its options turn things off.
+- **Interop (build tag `passbank_keepassxc`, KeePassXC 2.7.12 from the Flatpak):** `go test -tags passbank_keepassxc ./internal/core/kdbx` — KeePassXC opens files of all 18 combinations of cipher (AES-256, Twofish, ChaCha20), KDF (AES-KDF, Argon2d, Argon2id) and compression, and also the nine fixtures written by Passbank (one per kind), lists exactly the entries of the model (`ls -R -f`) and shows the title, user name, password, URL and notes of every entry as the model has them (`show -s`); it rejects a wrong password and accepts the right one. All pass.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - `keepassxc-cli` shows custom fields and attachments differently from the model, so the interop tests compare the five standard fields and the entry lists; the rest is covered by the round trip with Passbank's own reader, which two independent readers (pykeepass, KeePassXC) agree with on the fixtures.
+  - Entries without a title cannot be named to `keepassxc-cli`, so the interop tests skip them.
+
