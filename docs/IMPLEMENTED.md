@@ -402,3 +402,17 @@ history          2
 - **Manual checks:** none.
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** SPEC §7 now says the roots are always a pair (the plan only named the bins); the walk is deterministic (tree order of A, then of B).
+
+## 6.2 Comparison and changes
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-6.2-changes
+- **Summary:** `diff.Changes(a, b)` lists everything the user decides about, as SPEC §8 defines: `only-a`, `only-b`, `differs`, `deleted-in-a`, `deleted-in-b`, `group-differs` and `settings`, each with the items on both sides, the names of the differing fields (never values), both modification times, the deletion time, and the group path and title for display, in the stable order of §8. `EntryDifferences`, `GroupDifferences` and `SettingsDifferences` are exported for the later steps. `model.Entry.Clone` and `model.Group.Clone` are exported (the merge needs them).
+- **Main files:** internal/core/diff/compare.go, internal/core/diff/changes.go.
+- **Tests:** 22 tables (equal databases; access time, usage count and history ignored; only-a and only-b for entries and groups; field names, a protected flag alone, a custom field; field order, tag order, custom-data order and times not counting; every other entry property; attachments by name and hash; moved entries; paired roots and bins with different UUIDs; deletions on either side, a deleted entry that exists on both sides, repeated deletion records; group names, notes, tags and parent; group settings, expiry, icon, custom data and extra XML; interface state ignored; the roots with different names; every `Meta` setting; settings that only changed time; the order of kinds), details of a change, no value in any change, the inputs unchanged (random databases compared with `model.Diff`), and a stable order across runs.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** SPEC §8 now lists the field names and says that a group counts as the same parent when it is paired with the other side's parent. A paired entry that differs only in its quality-check flag or previous parent is equal, as §8's list says (those two are not on it). Unpaired groups are changes of their own (`only-a`/`only-b`), so a new group with five entries is six changes; 7.3 decides what a kept entry in a dropped group means.
+

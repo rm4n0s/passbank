@@ -218,6 +218,10 @@ What each choice means:
 - **`drop`** on a group drops the group and everything in it. It is allowed only when the user has chosen `drop` for every item under it; otherwise the plan is invalid (`PlanGroupNotEmpty`), and the GUI offers to set them all to `drop`
 - **Entries only in one input, in a group that only exists in that input**: their group is kept automatically while at least one of them is kept
 
+A change names the fields that differ and never their values. Entries: the string fields (`title`, `username`, `password`, `url`, `notes`, or `field <key>`), `attachments`, `icon`, `colors`, `override-url`, `tags`, `expiry`, `auto-type`, `custom-data`, `extra-xml` and `group`. Groups: `name`, `notes`, `icon`, `tags`, `expiry`, `settings`, `custom-data`, `extra-xml` and `parent`. Settings: `name`, `description`, `default-username`, `color`, `history-limits`, `recycle-bin`, `memory-protection`. The order of the fields, of the tags and of the custom data, the modification times of custom data, and the interface state of a group (expanded, top visible entry) do not count. A group counts as the same parent when it is paired with the other side's parent (section 7).
+
+An entry only in one input whose UUID is in the other input's deleted objects is a deletion (`deleted-in-a`, `deleted-in-b`), not `only-a` or `only-b`. A pair that is equal needs no deletion check: it exists on both sides.
+
 Changes are listed in a stable order: by kind (in the table's order), then by group path, then by title, then by UUID.
 
 ## 9. Choices and rules

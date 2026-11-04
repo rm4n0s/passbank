@@ -165,3 +165,10 @@ func wipeRaw(r Raw) {
 		wipe(n)
 	}
 }
+
+// Clone returns a deep copy of the entry, its history included. The copy shares
+// nothing with the original, so wiping one never wipes the other.
+func (e *Entry) Clone() *Entry { return e.clone() }
+
+// Clone returns a deep copy of the group with all its subgroups and entries.
+func (g *Group) Clone() *Group { return g.clone() }
