@@ -67,7 +67,7 @@ const (
 	blockSize4      = 1 << 20
 )
 
-// Encode writes the database as the bytes of a KDBX file of the version, encrypted
+// Encode writes the database as the bytes of a KDBX file of the version (4.0, 4.1, 3.1, 3.0 or 2.0), encrypted
 // with the settings and the credentials. The database is not changed. Fields that
 // the version cannot hold are left out without notice: the caller decides before
 // that whether it may (SPEC §5, Losses). The credentials stay as they are; the
@@ -79,7 +79,11 @@ func Encode(ctx context.Context, db *model.Database, version Version, settings E
 // encode is Encode with the source of the random values, so that a test can make
 // it fail.
 func encode(ctx context.Context, db *model.Database, version Version, settings EncryptionSettings, creds crypto.Credentials, random io.Reader) ([]byte, error) {
-	if version.Major != 4 || version.Minor > 1 {
+	switch {
+	case version.Major == 4 && version.Minor <= 1:
+	case (version.Major == 2 && version.Minor == 0) || (version.Major == 3 && version.Minor <= 1):
+		return encode3(ctx, db, version, settings, creds, random)
+	default:
 		return nil, errors.New("VersionUnsupported", "Passbank cannot write this KDBX version", "version", version.String())
 	}
 	if db == nil || db.Root == nil {

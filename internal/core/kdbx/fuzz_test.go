@@ -160,8 +160,8 @@ func FuzzParseHeader3(f *testing.F) {
 }
 
 func FuzzReadHashedBlocks(f *testing.F) {
-	f.Add(hashedBlocks(bytes.Repeat([]byte("d"), 100), 30))
-	f.Add(hashedBlocks(nil, 30))
+	f.Add(writeHashedBlocks(bytes.Repeat([]byte("d"), 100), 30))
+	f.Add(writeHashedBlocks(nil, 30))
 	f.Add([]byte{})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		if out, err := readHashedBlocks(data, 1<<20); err == nil && len(out) > 1<<20 {

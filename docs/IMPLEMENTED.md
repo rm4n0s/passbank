@@ -363,3 +363,17 @@ history          2
   - The fixtures made by pykeepass carry the 4.1 element `SettingsChanged` in files marked 4.0; writing such a file as 4.0 is therefore a (small) loss, and `MinVersion` returns 4.1 for it. The output tests clear that field where they write 4.0.
   - One `Loss` per item and kind, not per field: an entry whose history has three quality-check flags gives one `EntryQualityCheck`.
 
+## 5.2 The KDBX 3 writer
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-5.2-kdbx3-writer
+- **Summary:** `kdbx.Encode` writes KDBX 3.1, 3.0 and 2.0 as well: the header of SPEC §4.5 with new random seeds, IV, inner stream key and stream start bytes on every write, AES-KDF, the cipher key SHA-256(master seed || transformed key), the XML in the old dialect with `Meta/HeaderHash` (the SHA-256 of the header), the Salsa20 inner stream, GZip or none, the hashed block stream in 1 MiB blocks, and AES-256 or Twofish. `Supports` is checked first. `output.Write` accepts every version (nothing else in it changed).
+- **Main files:** internal/core/kdbx/encode3.go (the header and block helpers are in encode3.go and wire.go).
+- **Tests:** versions 3.1, 3.0 and 2.0 × AES-256 and Twofish × both compressions read back equal to `Fit(db, version)` with the settings that were asked for, and a wrong password does not open them; all 27 fixtures (KDBX 4 and 3.1) written in all three versions read back equal; 40 random databases with 4.1 fields and item custom data in all three versions; two writes differ in every seed, the IV and the inner key; the `HeaderHash` in the XML is the hash of the header of the file; a KDBX 3.1 file that KeePass or KeePassXC wrote, read and written again keeps every entry as pykeepass dumped it; nine error cases with routes (versions 3.2, 2.1 and 1.0, no database, Argon2, ChaCha20, an unknown compression, zero rounds, no credentials), cancellation, a missing attachment, and a failing random source at each of the five draws.
+- **Interop:** `go test -tags passbank_keepassxc ./internal/core/kdbx` — KeePassXC 2.7.12 opens 120 files (3.1, 3.0 and 2.0 × AES-256 and Twofish × both compressions × five databases including attachments and a Cyrillic password), lists exactly the entries of the model and shows the five standard fields as the model has them. **KDBX 2.x writing is therefore kept** (SPEC §4.5).
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** Passbank writes the versions 2.0, 3.0 and 3.1 only (other minors of 2 and 3 are `VersionUnsupported`), and its 4.x files are 4.0 or 4.1.
+

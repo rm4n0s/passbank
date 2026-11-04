@@ -52,3 +52,27 @@ func writeBlocks(base, data []byte, size int) []byte {
 		}
 	}
 }
+
+// writeHashedBlocks writes the hashed block stream of KDBX 2.x and 3.x: the data
+// in blocks of at most size bytes, each with its index, SHA-256 and size, ending
+// with the block of size zero whose hash is zeros.
+func writeHashedBlocks(data []byte, size int) []byte {
+	var out []byte
+	for index := uint32(0); ; index++ {
+		n := min(size, len(data))
+		block := data[:n]
+		data = data[n:]
+		out = binary.LittleEndian.AppendUint32(out, index)
+		if n == 0 {
+			out = append(out, make([]byte, 32)...)
+		} else {
+			sum := sha256.Sum256(block)
+			out = append(out, sum[:]...)
+		}
+		out = binary.LittleEndian.AppendUint32(out, uint32(n))
+		out = append(out, block...)
+		if n == 0 {
+			return out
+		}
+	}
+}

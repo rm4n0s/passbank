@@ -51,33 +51,6 @@ type build3 struct {
 	RawPayload []byte
 }
 
-// header3Field encodes a field of the old header: ID, two bytes of length, data.
-func header3Field(id byte, data []byte) []byte {
-	return append(append([]byte{id}, byte(len(data)), byte(len(data)>>8)), data...)
-}
-
-// hashedBlocks builds a hashed block stream of KDBX 3.
-func hashedBlocks(data []byte, size int) []byte {
-	var out []byte
-	for index := uint32(0); ; index++ {
-		n := min(size, len(data))
-		block := data[:n]
-		data = data[n:]
-		out = binary.LittleEndian.AppendUint32(out, index)
-		if n == 0 {
-			out = append(out, make([]byte, 32)...)
-		} else {
-			sum := sha256.Sum256(block)
-			out = append(out, sum[:]...)
-		}
-		out = binary.LittleEndian.AppendUint32(out, uint32(n))
-		out = append(out, block...)
-		if n == 0 {
-			return out
-		}
-	}
-}
-
 // build makes the file.
 func (b build3) build(t testing.TB) []byte {
 	t.Helper()
@@ -174,7 +147,7 @@ func (b build3) build(t testing.TB) []byte {
 			if size == 0 {
 				size = 1 << 20
 			}
-			blocks = hashedBlocks(xml, size)
+			blocks = writeHashedBlocks(xml, size)
 		}
 		payload = append(append([]byte(nil), startWritten...), blocks...)
 	}

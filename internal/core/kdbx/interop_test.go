@@ -211,3 +211,32 @@ func TestKeePassXCRejectsAWrongPassword(t *testing.T) {
 		t.Errorf("KeePassXC cannot open the file with the right one: %v", err)
 	}
 }
+
+func TestKeePassXCReadsKDBX2AndKDBX3(t *testing.T) {
+	dir := t.TempDir()
+	creds := crypto.Credentials{HasPassword: true, Password: secret.New([]byte("interop password"))}
+	for _, v := range []Version{{3, 1}, {3, 0}, {2, 0}} {
+		for _, cipher := range []model.UUID{crypto.CipherAES256, crypto.CipherTwofish} {
+			for _, comp := range []Compression{CompressionNone, CompressionGZip} {
+				for _, f := range []struct{ file, password string }{
+					{"k4-rich.kdbx", "fixture-rich"}, {"ext/rs-password.kdbx", "demopass"}, {"ext/rs-attachments.kdbx", "demopass"},
+					{"ext/go-protected-binary.kdbx", "123"}, {"ext/web-cyrillic.kdbx", "пароль"},
+				} {
+					t.Run(v.String()+"/"+cipher.String()[:4]+"/"+comp.String()+"/"+f.file, func(t *testing.T) {
+						db := openFixture(t, f.file, f.password, "")
+						settings := EncryptionSettings{CipherID: cipher, KDF: crypto.KDF{ID: crypto.KDFAES, Rounds: 1000}, Compression: comp}
+						data, err := Encode(context.Background(), db, v, settings, creds)
+						if err != nil {
+							t.Fatal(err)
+						}
+						file := filepath.Join(dir, strings.NewReplacer("/", "-", " ", "").Replace(t.Name())+".kdbx")
+						if err := os.WriteFile(file, data, 0o600); err != nil {
+							t.Fatal(err)
+						}
+						checkAgainstKeePassXC(t, dir, file, "interop password", db)
+					})
+				}
+			}
+		}
+	}
+}

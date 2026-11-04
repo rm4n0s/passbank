@@ -191,7 +191,7 @@ func TestReadContainer3Header(t *testing.T) {
 func TestReadContainer3Damage(t *testing.T) {
 	bad := func(id byte, data []byte) map[byte][]byte { return map[byte][]byte{id: data} }
 	badBlocks := func(mut func([]byte) []byte) []byte {
-		return mut(hashedBlocks([]byte(buildXML), 20))
+		return mut(writeHashedBlocks([]byte(buildXML), 20))
 	}
 	tests := []struct {
 		name  string
@@ -220,7 +220,7 @@ func TestReadContainer3Damage(t *testing.T) {
 		{"a last block with a hash", build3{Blocks: badBlocks(func(b []byte) []byte { b[len(b)-10] = 1; return b })}, "readHashedBlocks.FileCorrupt"},
 		{"no last block", build3{Blocks: badBlocks(func(b []byte) []byte { return b[:len(b)-40] })}, "readHashedBlocks.FileCorrupt"},
 		{"a block cut off", build3{Blocks: badBlocks(func(b []byte) []byte { return b[:60] })}, "readHashedBlocks.FileCorrupt"},
-		{"bad gzip", build3{Compression: CompressionGZip, Blocks: hashedBlocks([]byte("this is not gzip data"), 100)}, "gunzip.FileCorrupt"},
+		{"bad gzip", build3{Compression: CompressionGZip, Blocks: writeHashedBlocks([]byte("this is not gzip data"), 100)}, "gunzip.FileCorrupt"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -302,17 +302,17 @@ func TestReadContainer3Cancelled(t *testing.T) {
 
 func TestReadHashedBlocks(t *testing.T) {
 	data := bytes.Repeat([]byte("d"), 100)
-	stream := hashedBlocks(data, 30)
+	stream := writeHashedBlocks(data, 30)
 	if out, err := readHashedBlocks(stream, 100); err != nil || !bytes.Equal(out, data) {
 		t.Errorf("at the limit: %d bytes, %v", len(out), err)
 	}
 	_, err := readHashedBlocks(stream, 99)
 	assertRoute(t, err, "readHashedBlocks.FileCorrupt")
-	if out, err := readHashedBlocks(hashedBlocks(nil, 30), 100); err != nil || len(out) != 0 {
+	if out, err := readHashedBlocks(writeHashedBlocks(nil, 30), 100); err != nil || len(out) != 0 {
 		t.Errorf("an empty stream: %d bytes, %v", len(out), err)
 	}
 	// A block that claims to be larger than the limit of a block.
-	huge := hashedBlocks(data, 30)
+	huge := writeHashedBlocks(data, 30)
 	binary.LittleEndian.PutUint32(huge[36:40], maxBlock+1)
 	_, err = readHashedBlocks(huge, 1<<30)
 	assertRoute(t, err, "readHashedBlocks.FileCorrupt")
