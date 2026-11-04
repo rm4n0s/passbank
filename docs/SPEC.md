@@ -182,7 +182,8 @@ Established in step 3.1 from the sources below, in Passbank's own words. Behavio
 
 Matching pairs each item of A with at most one item of B.
 1. **By UUID**: items with the same UUID are a pair, wherever they are in the tree
-2. **Recycle bins**: A's recycle-bin group and B's recycle-bin group are a pair even when their UUIDs differ
+2. **Root groups**: the root group of A and the root group of B are always a pair, even when their UUIDs differ (every database has exactly one root)
+3. **Recycle bins**: A's recycle-bin group and B's recycle-bin group are a pair even when their UUIDs differ. A bin group that already has a partner by UUID is not paired again, and a database whose bin UUID names no group, or that has no bin, has no bin to pair
 
 Matching is by UUID only. Two databases created separately share no UUIDs, so every entry of each is "only in" its input, and Passbank never guesses that two entries with the same title are the same account. Databases that come from one another (copies, backups, the same database edited on two devices) keep their UUIDs and pair up.
 

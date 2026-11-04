@@ -390,3 +390,15 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** the matrix checks that what differs is "exactly what `Losses` reports" in two halves, because `Diff` and `Losses` speak different languages: `Fit(db, v)` is what the version holds (and `Losses(Fit(db, v), v)` is empty, step 5.1), and the file equals it.
 
+## 6.1 Matching by UUID
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-6.1-matching
+- **Summary:** `internal/core/diff` pairs the items of two databases: `Match(a, b)` returns the entry pairs (with the group each side holds them in), the group pairs, and the unpaired entries and groups of each side, wherever they are in the tree. Roots and recycle bins are paired even with different UUIDs (SPEC §7). `Tree` is an index over one database (parent, ancestors, group path, entry location, recycle bin) that the later steps use.
+- **Main files:** internal/core/diff/match.go.
+- **Tests:** 12 tables (equal databases, unrelated ones, moved entries and groups, items on one side only, bins with equal and different UUIDs, no bin, a bin UUID without a group, a bin that already has a partner, roots with different UUIDs, no root) and 40 random database pairs (a clone is all pairs; independent databases share nothing but the roots and bins; the counts add up), plus the tree helpers.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** SPEC §7 now says the roots are always a pair (the plan only named the bins); the walk is deterministic (tree order of A, then of B).
