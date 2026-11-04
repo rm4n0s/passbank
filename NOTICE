@@ -10,14 +10,19 @@ third_party/.
   Component                                   License        Added by step
   ------------------------------------------  -------------  -------------
   github.com/rm4n0s/errors                    MIT            1.2
-  github.com/rm4n0s/glutter (and what it      MIT, BSD-3     1.4
-    brings in: golang.org/x/*, go-text,
-    godbus)
-  Go fonts (golang.org/x/image/font/gofont)   BSD-3-Clause   1.4
+  github.com/rm4n0s/glutter                   BSD-3-Clause   1.4
+  Scripts adapted from Glutter's scripts/     BSD-3-Clause   1.4
+    (headless-wayland.sh,
+    screenshot-headless.sh)
+  What Glutter brings in: golang.org/x/text,  BSD-3-Clause,  1.4
+    golang.org/x/sys, go-text/typesetting,    MIT
+    godbus/dbus, ebitengine/purego
+  Go fonts (golang.org/x/image/font/gofont;   BSD-3-Clause   1.4
+    third_party/x-image)
+  golang.org/x/term                           BSD-3-Clause   1.4
   golang.org/x/crypto                         BSD-3-Clause   2.2
   Copy of golang.org/x/crypto/argon2 that     BSD-3-Clause   2.2
     exports Argon2d (internal/third_party/
     argon2)
-  golang.org/x/term                           BSD-3-Clause   2.8
   Test files of other KeePass implementations  MIT           3.1 (if used)
     (gokeepasslib, keepass-rs, kdbxweb)

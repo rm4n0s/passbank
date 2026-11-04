@@ -63,3 +63,23 @@ Copy this block, fill it in, and keep every heading. Write "none" where somethin
 - **Manual checks:** none.
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** the first version of `secret.Bytes` held its bytes behind a pointer to a struct, and the leak test found that `fmt` prints such a field by its contents with `%s` or `%q` when the field is unexported (`%!s(*secret.buffer=&{[104 117 ...]})`). It now holds them behind a func, which fmt prints as an address; the doc comment says why, and a `Bytes` is no longer comparable with `==` (use `Equal`). The error-tag scanner is a trimmed port of Emetos's (the user's MIT project, commit 4d0c4b5); its extra rule file is not ported because no step needs it. The Go program is in `internal/archtest/cmd/errortags` and the script wraps it, as in Emetos. `docs/ERROR-TAGS-UNTESTED.md` does not exist yet (an empty list).
+
+## 1.4 Scripts, first window and the CLI skeleton
+
+- **Date:** 2026-11-04
+- **Branch:** feat/step-1.4-scripts-first-window
+- **Summary:** `go run ./cmd/passbank-gui` opens a 1100×720 Glutter window (Wayland/X11, `WidgetsApp` without Material) that shows "Passbank" centered on the app's background, with the Go fonts bundled. `passbank --version`, `--help` and usage errors work through `cli.Main`, which takes the terminal as an interface (`cli.TTY` is the real one, on `/dev/tty`). The scripts `heavy.sh`, `gpu-env.sh`, `isolated.sh`, `proof.sh`, `headless-wayland.sh` and `screenshot-headless.sh` exist, and `proof.sh` makes a screenshot in headless sway on Mesa's software renderer, never the NVIDIA card.
+- **Main files:** go.mod (Glutter v1.9.9, x/image, x/term), cmd/passbank, cmd/passbank-gui, internal/cli, internal/gui/app, internal/gui/kit/fonts, internal/gui/testutil, internal/version, scripts/, third_party/x-image, NOTICE.
+- **Tests:** the home shows the name (widget test); `app.Main` and `cli.Main` for every flag and mistake, and a failing stdout (exit 1); both font families load (monospace gives "iiii" and "WWWW" one width, Go does not); `cli.TTY` route tests for `TerminalOpenFailed`, `TerminalWriteFailed` and `PasswordReadFailed`; `app.Run` without a display (`AppRunFailed`); `version.describe`; script tests: `isolated.sh` moves HOME and every XDG variable, passes the status through, rejects bad usage, and leaves no folder behind; `heavy.sh` passes assignments and status through and makes a third command wait while two others hold the slots; `gpu-env.sh` leaves no NVIDIA driver visible.
+- **Checks:** gofmt ✅ · go vet ✅ · golangci-lint ✅ · go test -race ✅ · CGO_ENABLED=0 build ✅ · CGO_ENABLED=0 test ✅ · error-tags ✅ · display tests none · interop tests none
+- **Proof:**
+  ![1.4 first window](implemented-proof-images/1.4-first-window.png)
+  The 1100×720 window shows "Passbank" in bold, centered on the near-white background (checked by viewing the image; made with `scripts/proof.sh docs/implemented-proof-images/1.4-first-window.png`).
+- **Manual checks:** the success path of `cli.TTY` (a real password prompt without echo) needs a terminal; it is added to step 2.8 as a manual check, where `passbank info` first uses it.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - `WidgetsApp`'s `color` is only the app's primary color (as in Flutter), not a background: the first proof showed the engine's purple, so the page paints its own `ColoredBox`.
+  - `heavy.sh` uses the same lock files as Emetos's (`emetos-heavy.*`) on purpose, so Passbank and Emetos sessions on this machine share the two slots. The proof then waited behind the Emetos session's runs; a `--alone` request would block that session's new commands while it waits, so the proof took a normal slot (CLAUDE.md names real-input display tests and timing measurements for `--alone`, not proofs).
+  - The real terminal moved into `internal/cli` (archtest allows `x/term` only there), so `cmd/passbank` only calls `cli.Main`; `internal/version` is new (both programs print it).
+  - `scripts/headless-wayland.sh` and `screenshot-headless.sh` are Emetos's adaptations of Glutter's (BSD-3-Clause, noted in the header); `proof.sh` lost the options this project doesn't have.
+  - The display-test helper that sets the GPU environment for programs the Go tests start is not written: step 8.6 adds it (`gpu-env.sh` says so).

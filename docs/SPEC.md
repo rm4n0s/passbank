@@ -396,6 +396,7 @@ internal/gui/write/        Write screen
 internal/gui/kit/          Passbank's own widgets
 internal/gui/testutil/     test fonts and helpers for widget and golden tests
 internal/testenv/          test isolation (XDG folders), fixture loading
+internal/version/          the version both programs print for --version
 internal/third_party/argon2/ copy of x/crypto/argon2 exporting Argon2d (A12)
 internal/archtest/         package-boundary checks
 ```

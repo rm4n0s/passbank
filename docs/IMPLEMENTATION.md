@@ -308,13 +308,14 @@ Every **Proof** item gives its exact command.
 **Goal:** the `info` command of SPEC §12, and the credential options used by every command.
 **Read:** SPEC §12, §14.
 **Tasks:**
-1. `go get golang.org/x/term@latest`.
+1. `golang.org/x/term` is already in `go.mod` (step 1.4 added it for the real terminal).
 2. Credential options for a named input (`--keyfile-X`, `--password-file-X`, `--no-password-X`). The terminal prompt reads without echo from the `term` interface and returns `secret.Bytes`. `--password-file-X` refuses a file readable by group or others (`PasswordFileTooOpen`). With no terminal, the error is `PasswordNeedsTerminal`. For `info`, the input's name is just `--keyfile`, `--password-file` and `--no-password`.
 3. `passbank info FILE`: prints the `Info` fields, one per line, in a stable order.
 4. Error output: one line with the message, and the route with `--debug`.
 
 **Tests:** in-process CLI tests with a fake terminal, against golden text files, for fixtures of each kind, a wrong password, no terminal, and a password file that is too open.
 **Proof:** method C, the golden output of `passbank info` on the richest 4.x fixture.
+**Manual check:** the success path of the real terminal (`cli.TTY`, step 1.4) cannot run without a terminal. Add to `docs/MANUAL-CHECKS.md`: the user runs `go run ./cmd/passbank info internal/core/kdbx/testdata/<fixture>.kdbx` in a real terminal, types the fixture's password (FIXTURES.md), sees nothing echoed, and sees the file's summary.
 
 ---
 
