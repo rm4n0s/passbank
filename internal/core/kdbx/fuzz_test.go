@@ -114,10 +114,10 @@ func FuzzParseXML4(f *testing.F) {
 	f.Add([]byte{})
 	f.Fuzz(func(t *testing.T, data []byte) {
 		c := &container{
-			Header: &Header{}, XML: data, InnerStreamID: crypto.InnerChaCha20, InnerStreamKey: secret.New([]byte("fuzz key")),
+			Header: &Header{Version: Version{4, 0}}, XML: data, InnerStreamID: crypto.InnerChaCha20, InnerStreamKey: secret.New([]byte("fuzz key")),
 			Binaries: []innerBinaryData{{Data: secret.New([]byte("binary"))}},
 		}
-		db, err := parseXML4(context.Background(), c)
+		db, err := parseXML(context.Background(), c)
 		if err == nil {
 			if db.Root == nil {
 				t.Fatal("a database without a root group")
@@ -131,6 +131,49 @@ func FuzzParseXML4(f *testing.F) {
 func FuzzOpenBytes(f *testing.F) {
 	// A cheap file, so that a mutation that survives the header checks is not slow.
 	f.Add(build4{Password: "built", Payload: goodPayload([]byte{1, 'x'}), BlockSize: 40}.build(f))
+	f.Add([]byte{})
+	creds := crypto.Credentials{HasPassword: true, Password: secretOf("built")}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if len(data) > 1<<16 {
+			t.Skip()
+		}
+		db, _, err := OpenBytes(context.Background(), data, creds)
+		if err == nil {
+			db.Wipe()
+		}
+	})
+}
+
+func FuzzParseHeader3(f *testing.F) {
+	for _, name := range []string{"k31-rich.kdbx", "ext/go-chacha.kdbx", "ext/rs-chacha20-inner.kdbx"} {
+		data := fixtureFile(f, name)
+		f.Add(data[:min(len(data), 300)])
+	}
+	f.Add(build3{Password: "built"}.build(f)[:200])
+	f.Add([]byte{})
+	f.Fuzz(func(t *testing.T, data []byte) {
+		_, end, err := parseHeader3(data, Version{3, 1})
+		if err == nil && (end < 0 || end > len(data)) {
+			t.Fatalf("header end %d of %d bytes", end, len(data))
+		}
+	})
+}
+
+func FuzzReadHashedBlocks(f *testing.F) {
+	f.Add(hashedBlocks(bytes.Repeat([]byte("d"), 100), 30))
+	f.Add(hashedBlocks(nil, 30))
+	f.Add([]byte{})
+	f.Fuzz(func(t *testing.T, data []byte) {
+		if out, err := readHashedBlocks(data, 1<<20); err == nil && len(out) > 1<<20 {
+			t.Fatalf("read %d bytes past the limit", len(out))
+		}
+	})
+}
+
+func FuzzOpenBytes3(f *testing.F) {
+	// A cheap file of KDBX 3, so that a mutation that survives the early checks is not slow.
+	f.Add(build3{Password: "built", BlockSize: 40}.build(f))
+	f.Add(build3{Major: 2, Password: "built", Compression: CompressionGZip}.build(f))
 	f.Add([]byte{})
 	creds := crypto.Credentials{HasPassword: true, Password: secretOf("built")}
 	f.Fuzz(func(t *testing.T, data []byte) {

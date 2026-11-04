@@ -268,3 +268,19 @@ history          2
   - Fixes a bug of step 2.5 found in step 3.1: a KDBX 4 header with the AES-KDF ID `7c02bb82-…` (KeePassXC) is now read as AES-KDF (`crypto.KDFAESKdbx4`, mapped to `KDFAES`); both IDs are tested.
   - The `PaddingInvalid` and `CiphertextInvalid` errors of the outer cipher still reach the caller as they are (they are damage, not wrong credentials, once the start bytes match).
 
+## 3.3 The KDBX 3 XML and `Open` for every version
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-3.3-kdbx3-xml
+- **Summary:** `kdbx.Open` and `kdbx.OpenBytes` now read every version: major 2 and 3 go through `readContainer3`, major 4 through `readContainer4`, any other major is `VersionUnsupported`. The XML reader (`parseXML`, formerly `parseXML4`) handles the old dialect: `Meta/HeaderHash` is checked against the header's SHA-256 (a mismatch is `FileCorrupt`; a missing one is an error from 3.1 on), `Meta/Binaries` becomes the attachment pool (base64, GZip when `Compressed`, decrypted with the inner stream when `Protected`, in document order), entries refer to it by ID, and content inside an entry (`<Value Compressed=…>`) is read too. `passbank info` works for every version.
+- **Main files:** internal/core/kdbx/{xmlread,open}.go, testdata/dumps/, testdata/gen/dump_entries.py.
+- **Tests:** the sixteen KDBX 3.1 fixtures through `Open` with their counts; thirteen of them compared line by line (title, user, password, URL, notes, tags, custom fields, attachment hashes, history counts) with dumps made by pykeepass, which is independent of Passbank; the rest with known values (the kdbxweb file with a protected attachment, whose later values prove the inner stream stays in step; the ChaCha20 inner stream; the shared and empty binaries of KeePassXC 2.7); the rich fixture made by KeePassXC as 3.1 and the one made by pykeepass as 4.0 from the same source give equal models by `model.Diff` after removing what the two programs do differently (field order, standard icon with a custom icon, KeePassXC's own custom data, the protected flag of an imported attachment); `HeaderHash` cases for 2.0, 3.0, 3.1, 3.2; binaries in `Meta/Binaries` and inline, every error with its route; built files of versions 2.0, 3.0 and 3.1 with the hash of their header in the XML, and a damaged header found through it; `passbank info` goldens for five KDBX 3.1 files; three more fuzz targets (header, block stream, `OpenBytes` on built KDBX 3 files), 10 s each, nothing found.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method C: `internal/cli/testdata/golden/info-k31-rich.txt` and the four `info-ext-*.txt` files.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:**
+  - pykeepass is wrong about `ext/go-protected-binary.kdbx` (it does not decrypt a protected attachment of `Meta/Binaries`); Passbank reads the passwords the project documents.
+  - A version-4 file whose XML has a `HeaderHash` element keeps it as unknown XML; only KDBX 2.x and 3.x files check it.
+  - `Info.Attachments` counts the attachments of entries, not the pool.
+

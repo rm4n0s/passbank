@@ -23,7 +23,7 @@ func readFixtureDB(t *testing.T, file, password, keyFile string) *model.Database
 		t.Fatal(err)
 	}
 	defer c.wipe()
-	db, err := parseXML4(context.Background(), c)
+	db, err := parseXML(context.Background(), c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -279,7 +279,7 @@ const innerKey = "an inner stream key"
 // xmlContainer makes a container around an XML, with the ChaCha20 stream.
 func xmlContainer(xmlText string, binaries ...innerBinaryData) *container {
 	return &container{
-		Header: &Header{}, XML: []byte(xmlText), InnerStreamID: crypto.InnerChaCha20,
+		Header: &Header{Version: Version{4, 0}}, XML: []byte(xmlText), InnerStreamID: crypto.InnerChaCha20,
 		InnerStreamKey: secret.New([]byte(innerKey)), Binaries: binaries,
 	}
 }
@@ -317,7 +317,7 @@ func entryXML(uuidLast byte, extra string) string {
 
 func parse(t *testing.T, xmlText string, binaries ...innerBinaryData) (*model.Database, error) {
 	t.Helper()
-	return parseXML4(context.Background(), xmlContainer(xmlText, binaries...))
+	return parseXML(context.Background(), xmlContainer(xmlText, binaries...))
 }
 
 func TestParseXML4ProtectedValuesAreDecryptedInOrder(t *testing.T) {
@@ -366,7 +366,7 @@ func TestParseXML4Attachments(t *testing.T) {
 	}
 	body := entryXML(2, ref("a.txt", 0)+ref("b.txt", 1)+ref("again.txt", 0)) + entryXML(3, ref("c.txt", 0))
 	c := xmlContainer(xmlDoc("", body), plain, prot, unused)
-	db, err := parseXML4(context.Background(), c)
+	db, err := parseXML(context.Background(), c)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -556,7 +556,7 @@ func TestParseXML4TextLimit(t *testing.T) {
 	const limit = 24
 	at, over := strings.Repeat("a", limit), strings.Repeat("a", limit+1)
 	doc := xmlDoc("", entryXML(2, `<String><Key>a</Key><Value>`+at+`</Value></String><OverrideURL>`+at+`</OverrideURL>`)+`<X>`+at+`</X>`)
-	if _, err := parseXML4Limit(context.Background(), xmlContainer(doc), limit); err != nil {
+	if _, err := parseXMLLimit(context.Background(), xmlContainer(doc), limit); err != nil {
 		t.Fatalf("a text at the limit: %v", err)
 	}
 	for name, text := range map[string]string{
@@ -565,7 +565,7 @@ func TestParseXML4TextLimit(t *testing.T) {
 		"an unknown one": `<X>` + over + `</X>`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := parseXML4Limit(context.Background(), xmlContainer(xmlDoc("", text)), limit)
+			_, err := parseXMLLimit(context.Background(), xmlContainer(xmlDoc("", text)), limit)
 			if name == "an unknown one" {
 				assertRoute(t, err, "rawNode.FileCorrupt")
 			} else {
@@ -579,14 +579,14 @@ func TestParseXML4Cancelled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	body := strings.Repeat(entryXML(2, `<IconID>1</IconID>`), cancelEvery)
-	_, err := parseXML4(ctx, xmlContainer(xmlDoc("", body)))
+	_, err := parseXML(ctx, xmlContainer(xmlDoc("", body)))
 	assertRoute(t, err, "next.ReadCancelled")
 }
 
 func TestParseXML4BadInnerStream(t *testing.T) {
 	c := xmlContainer(xmlDoc("", ""))
 	c.InnerStreamID = 77
-	_, err := parseXML4(context.Background(), c)
+	_, err := parseXML(context.Background(), c)
 	assertRoute(t, err, "NewInnerStream.InnerStreamUnsupported")
 }
 

@@ -118,3 +118,13 @@ The rich content plus elements that no KeePass version defines, which Passbank m
 `Visible` element and a nested `Nested/Deep`), and `X-TopLevel` (text `kept`, one child `Child a="1"`) after
 `Root` in the file. The `Token` is **not** a `Value` element, so KDBX does not protect it: the file holds its
 text as it is, and a reader must not decrypt it.
+
+## `dumps/`
+
+`dumps/<file>.txt` holds one line per entry of a KDBX 3.1 fixture (group path, title, user name, password, URL, notes,
+tags, custom fields, attachments by SHA-256, number of history items), written by `gen/dump_entries.py` with pykeepass,
+which is independent of Passbank. `open3_test.go` writes the same lines from Passbank's model and requires them to be
+equal. Two files have no dump because pykeepass cannot read them: `ext/go-protected-binary.kdbx` (a protected
+attachment in `Meta/Binaries`, which pykeepass does not decrypt, so every later protected value is wrong) and
+`ext/rs-chacha20-inner.kdbx` (ChaCha20 inner stream); their tests use the values their projects document.
+

@@ -1,0 +1,4 @@
+00000000000000000000000000000201||Bank|ada|bank-password-1|https://example.test/bank|notes of Bank|money,work|Account number=DE00 1234;PIN=4711|statement.txt:d99a1767525b9a59c709987ee470f25d8b926cc5379520da514612ce0492bc35|2
+00000000000000000000000000000202|Email|Mail|ada@example.test|mail-password-1|https://example.test/mail|notes of Mail||||0
+00000000000000000000000000000203|Recycle Bin|Old forum|ada|forum-password-1|https://example.test/old-forum|notes of Old forum||||0
+00000000000000000000000000000204||Ünïcödé ключ 鍵|用户|pässwörd-日本語|https://example.test/ünïcödé-ключ-鍵|notes of Ünïcödé ключ 鍵||||0

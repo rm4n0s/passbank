@@ -100,7 +100,6 @@ func TestOpenErrors(t *testing.T) {
 		{"a wrong password", testenv.Fixture(t, "k4-rich.kdbx"), credsOf(t, "wrong", ""), "WrongCredentials"},
 		{"no credentials", testenv.Fixture(t, "k4-rich.kdbx"), crypto.Credentials{}, "OpenBytes->CompositeKey.NoCredentials"},
 		{"a missing key file", testenv.Fixture(t, "k4-password-and-keyfile.kdbx"), credsOf(t, "fixture-rich", ""), "WrongCredentials"},
-		{"KDBX 3 (until milestone 3)", testenv.Fixture(t, "k31-rich.kdbx"), credsOf(t, "fixture-rich", ""), "OpenBytes.VersionUnsupported"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

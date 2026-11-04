@@ -1,0 +1,10 @@
+version          3.1
+cipher           Twofish
+kdf              AES-KDF
+kdf-rounds       600000
+compression      GZip
+inner-stream     Salsa20
+groups           7
+entries          2
+attachments      0
+history          0

@@ -1,0 +1,6 @@
+3c461f9809e38de54e41aecf2116aeec|Another group|Here|we|are||||||0
+79c4b4ba5b21d85c2fc62d08384ca167|Some group/Sub-Group 2 of group|Whatever|it|is||||||0
+9c4ed4275caeef74387ad4b354049f4a||Test|tester|testing||||||1
+9d2a202a804727109fca31fbd6ac0b80|Another group|In another group|demouser|demopassword||||||1
+e9c922068e631dd7c859907f055a8799||One more|to|test||||||0
+f82c8e9f61a37caa9818fbdd7e40797d|Some group/Sub-Group 2 of group|Walked|the|line||||||0

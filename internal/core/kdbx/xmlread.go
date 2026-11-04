@@ -45,51 +45,87 @@ type xmlReader struct {
 	ctx    context.Context
 	dec    *xml.Decoder
 	stream crypto.InnerStream
-	// attachments are the pool keys of the binaries of the inner header, by index,
-	// and used marks those that an entry refers to.
-	attachments []model.BinaryKey
-	used        []bool
-	tokens      int
-	depth       int
+	// pool holds the binaries that entries can refer to: those of the inner header
+	// of KDBX 4 by index, those of Meta/Binaries of KDBX 2.x and 3.x by ID, and
+	// used marks those that an entry refers to.
+	pool map[int]poolItem
+	used map[int]bool
+	// inline numbers the binaries that KDBX 3 entries hold inside the entry (they
+	// get negative IDs).
+	inline int
+	// v3 says that the file is KDBX 2.x or 3.x; headerHash is then the SHA-256 of
+	// the header, which Meta/HeaderHash must repeat, and sawHeaderHash says that it
+	// did.
+	v3            bool
+	headerHash    []byte
+	sawHeaderHash bool
+	tokens        int
+	depth         int
 	// maxText is the largest text of one element (maxStringValue; smaller in tests).
 	maxText int
 }
 
-// parseXML4 reads the XML of a KDBX 4 container into a database. The protected
-// values are decrypted with the inner stream in document order.
-func parseXML4(ctx context.Context, c *container) (*model.Database, error) {
-	return parseXML4Limit(ctx, c, maxStringValue)
+// poolItem is a binary that entries can refer to.
+type poolItem struct {
+	key  model.BinaryKey
+	data secret.Bytes
 }
 
-// parseXML4Limit is parseXML4 with another limit for the text of one element, so
+// parseXML reads the XML of a container, of KDBX 4 or of KDBX 2.x and 3.x, into
+// a database. The protected values are decrypted with the inner stream in
+// document order.
+func parseXML(ctx context.Context, c *container) (*model.Database, error) {
+	return parseXMLLimit(ctx, c, maxStringValue)
+}
+
+// parseXMLLimit is parseXML with another limit for the text of one element, so
 // that a test can reach the limit without a 256 MiB file.
-func parseXML4Limit(ctx context.Context, c *container, maxText int) (*model.Database, error) {
+func parseXMLLimit(ctx context.Context, c *container, maxText int) (*model.Database, error) {
 	stream, err := crypto.NewInnerStream(c.InnerStreamID, c.InnerStreamKey.Reveal())
 	if err != nil {
 		return nil, err
 	}
-	r := &xmlReader{ctx: ctx, dec: xml.NewDecoder(bytes.NewReader(c.XML)), stream: stream, maxText: maxText}
+	r := &xmlReader{
+		ctx: ctx, dec: xml.NewDecoder(bytes.NewReader(c.XML)), stream: stream, maxText: maxText,
+		pool: map[int]poolItem{}, used: map[int]bool{}, v3: c.Header.Version.Major < 4, headerHash: c.HeaderHash,
+	}
 	db := &model.Database{Binaries: map[model.BinaryKey]*model.Binary{}}
 	defaultMeta(&db.Meta)
-	for _, b := range c.Binaries {
-		r.attachments = append(r.attachments, model.BinaryKey{Hash: sha256.Sum256(b.Data.Reveal()), Protected: b.Protected})
+	for i, b := range c.Binaries {
+		r.pool[i] = poolItem{key: model.BinaryKey{Hash: sha256.Sum256(b.Data.Reveal()), Protected: b.Protected}, data: b.Data}
 	}
-	r.used = make([]bool, len(c.Binaries))
 
-	if err := r.document(db); err != nil {
+	err = r.document(db)
+	if err == nil && r.v3 && !r.sawHeaderHash && c.Header.Version.Major == 3 && c.Header.Version.Minor >= 1 {
+		err = errors.New("FileCorrupt", "the database has no HeaderHash, which a KDBX 3.1 file must have", "where", "Meta")
+	}
+	if err != nil {
+		r.wipePool(c)
 		db.Wipe()
 		return nil, err
 	}
-	for i, key := range r.attachments {
+	for i, item := range r.pool {
 		if !r.used[i] {
 			continue
 		}
-		if _, ok := db.Binaries[key]; !ok {
-			db.Binaries[key] = &model.Binary{Data: c.Binaries[i].Data.Clone()}
+		if _, ok := db.Binaries[item.key]; !ok {
+			db.Binaries[item.key] = &model.Binary{Data: item.data.Clone()}
 		}
 	}
+	r.wipePool(c)
 	db.PublicCustomData = append([]model.PublicCustomDataItem(nil), c.Header.PublicCustomData...)
 	return db, nil
+}
+
+// wipePool wipes the binaries that the reader made itself (those of Meta/Binaries
+// and of entries); the container wipes its own.
+func (r *xmlReader) wipePool(c *container) {
+	if !r.v3 {
+		return
+	}
+	for _, item := range r.pool {
+		item.data.Wipe()
+	}
 }
 
 // next returns the next token, looking at ctx now and then.
@@ -286,44 +322,62 @@ func (r *xmlReader) text(se xml.StartElement) (string, error) {
 	return string(b), err
 }
 
+// xmlValue is what a Value element holds.
+type xmlValue struct {
+	// data is the text of the element, decrypted when it was protected by the
+	// inner stream.
+	data secret.Bytes
+	// protected is the flag to keep with the field: Protected, or ProtectInMemory
+	// (KeePass's own export: plain text that clients mask).
+	protected bool
+	// decrypted says that data was decrypted, and so is not base64 any more.
+	decrypted bool
+	// ref is the Ref attribute, -1 when there is none; compressed is the
+	// Compressed attribute of an attachment inside an entry (KDBX 3).
+	ref        int
+	compressed bool
+}
+
 // value reads a Value element: the text of a field, or the reference to an
 // attachment. A protected value is decrypted with the inner stream.
-func (r *xmlReader) value(se xml.StartElement) (v secret.Bytes, protected bool, ref int, err error) {
-	ref = -1
-	decrypt := false
+func (r *xmlReader) value(se xml.StartElement) (xmlValue, error) {
+	v := xmlValue{ref: -1}
 	for _, a := range se.Attr {
 		switch a.Name.Local {
 		case "Protected":
-			decrypt = strings.EqualFold(a.Value, "true")
-			protected = protected || decrypt
+			v.decrypted = strings.EqualFold(a.Value, "true")
+			v.protected = v.protected || v.decrypted
 		case "ProtectInMemory":
-			// KeePass's own export: plain text that clients mask.
-			protected = protected || strings.EqualFold(a.Value, "true")
+			v.protected = v.protected || strings.EqualFold(a.Value, "true")
+		case "Compressed":
+			v.compressed = strings.EqualFold(a.Value, "true")
 		case "Ref":
 			n, err := strconv.Atoi(a.Value)
 			if err != nil || n < 0 {
-				return secret.Bytes{}, false, 0, errors.New("FileCorrupt", "an attachment reference is not a number", "where", "Value")
+				return xmlValue{}, errors.New("FileCorrupt", "an attachment reference is not a number", "where", "Value")
 			}
-			ref = n
+			v.ref = n
 		}
 	}
 	text, err := r.textBytes(se)
 	if err != nil {
-		return secret.Bytes{}, false, 0, err
+		return xmlValue{}, err
 	}
-	if !decrypt {
-		return secret.New(text), protected, ref, nil
+	if !v.decrypted {
+		v.data = secret.New(text)
+		return v, nil
 	}
 	defer clear(text)
 	plain := make([]byte, base64.StdEncoding.DecodedLen(len(text)))
 	n, err := base64.StdEncoding.Decode(plain, text)
 	if err != nil {
 		clear(plain)
-		return secret.Bytes{}, false, 0, errors.New("FileCorrupt", "a protected value is not base64", "where", "Value")
+		return xmlValue{}, errors.New("FileCorrupt", "a protected value is not base64", "where", "Value")
 	}
 	plain = plain[:n]
 	r.stream.XORKeyStream(plain, plain)
-	return secret.New(plain), true, ref, nil
+	v.data = secret.New(plain)
+	return v, nil
 }
 
 // defaultMeta sets what KeePass assumes for the settings that a file leaves out.
@@ -341,6 +395,10 @@ func (r *xmlReader) meta(se xml.StartElement, m *model.Meta) error {
 		switch name {
 		case "Generator":
 			return setString(&m.Generator)
+		case "HeaderHash":
+			if r.v3 {
+				return r.setHeaderHash
+			}
 		case "DatabaseName":
 			return setString(&m.DatabaseName)
 		case "DatabaseNameChanged":
@@ -393,6 +451,10 @@ func (r *xmlReader) meta(se xml.StartElement, m *model.Meta) error {
 			return true, r.customIcons(c, m)
 		case "CustomData":
 			return true, r.customData(c, &m.CustomData)
+		case "Binaries":
+			if r.v3 {
+				return true, r.binaries(c)
+			}
 		}
 		return false, nil
 	})
@@ -682,18 +744,19 @@ func (r *xmlReader) stringField(se xml.StartElement) (model.Field, error) {
 		if c.Name.Local != "Value" {
 			return false, nil
 		}
-		v, protected, _, err := r.value(c)
+		v, err := r.value(c)
 		if err != nil {
 			return true, err
 		}
-		f.Value, f.Protected = v, protected
+		f.Value, f.Protected = v.data, v.protected
 		return true, nil
 	})
 	return f, err
 }
 
-// attachment reads a Binary element of an entry: a name and a reference into the
-// binaries of the inner header.
+// attachment reads a Binary element of an entry: a name and a reference to the
+// binaries of the inner header (KDBX 4) or of Meta/Binaries (KDBX 3). An entry
+// of KDBX 3 may also hold the content inside the entry.
 func (r *xmlReader) attachment(se xml.StartElement) (model.Attachment, error) {
 	var a model.Attachment
 	ref := -1
@@ -706,20 +769,134 @@ func (r *xmlReader) attachment(se xml.StartElement) (model.Attachment, error) {
 		if c.Name.Local != "Value" {
 			return false, nil
 		}
-		v, _, rf, err := r.value(c)
-		v.Wipe()
-		ref = rf
+		v, err := r.value(c)
+		if err != nil {
+			return true, err
+		}
+		defer v.data.Wipe()
+		ref = v.ref
+		if ref < 0 && r.v3 {
+			ref, err = r.addInline(v)
+		}
 		return true, err
 	})
 	if err != nil {
 		return a, err
 	}
-	if ref < 0 || ref >= len(r.attachments) {
-		return a, errors.New("FileCorrupt", "an attachment refers to a binary that the file does not have", "where", "Binary", "ref", ref, "binaries", len(r.attachments))
+	item, ok := r.pool[ref]
+	if !ok {
+		return a, errors.New("FileCorrupt", "an attachment refers to a binary that the file does not have", "where", "Binary", "ref", ref, "binaries", len(r.pool))
 	}
 	r.used[ref] = true
-	a.Binary = r.attachments[ref]
+	a.Binary = item.key
 	return a, nil
+}
+
+// addInline puts the content that an entry of KDBX 3 holds inside itself into the
+// pool, and returns its ID.
+func (r *xmlReader) addInline(v xmlValue) (int, error) {
+	data := v.data.Reveal()
+	if !v.decrypted {
+		var err error
+		if data, err = decodeBinary(data, v.compressed, r.maxText); err != nil {
+			return 0, err
+		}
+	} else if v.compressed {
+		var err error
+		if data, err = gunzip(data, r.maxText); err != nil {
+			return 0, err
+		}
+	} else {
+		data = append([]byte(nil), data...)
+	}
+	r.inline--
+	r.pool[r.inline] = poolItem{key: model.BinaryKey{Hash: sha256.Sum256(data), Protected: v.protected}, data: secret.New(data)}
+	return r.inline, nil
+}
+
+// decodeBinary decodes the base64 text of a binary and, when compressed, its
+// GZip.
+func decodeBinary(text []byte, compressed bool, max int) ([]byte, error) {
+	data := make([]byte, base64.StdEncoding.DecodedLen(len(text)))
+	n, err := base64.StdEncoding.Decode(data, text)
+	if err != nil {
+		return nil, errors.New("FileCorrupt", "the content of an attachment is not base64", "where", "Binary")
+	}
+	data = data[:n]
+	if compressed && len(data) > 0 {
+		return gunzip(data, max)
+	}
+	return data, nil
+}
+
+// binaries reads Meta/Binaries of KDBX 3: the contents that entries refer to by
+// ID. Each is base64, protected by the inner stream when it says so (decrypted
+// in document order with the other protected values), and GZip when compressed.
+func (r *xmlReader) binaries(se xml.StartElement) error {
+	return r.object(se, nil, nil, func(c xml.StartElement) (bool, error) {
+		if c.Name.Local != "Binary" {
+			return false, nil
+		}
+		id, compressed, protected := -1, false, false
+		for _, at := range c.Attr {
+			switch at.Name.Local {
+			case "ID":
+				n, err := strconv.Atoi(at.Value)
+				if err != nil || n < 0 {
+					return true, errors.New("FileCorrupt", "the ID of a binary is not a number", "where", "Binaries")
+				}
+				id = n
+			case "Compressed":
+				compressed = strings.EqualFold(at.Value, "true")
+			case "Protected":
+				protected = strings.EqualFold(at.Value, "true")
+			}
+		}
+		if id < 0 {
+			return true, errors.New("FileCorrupt", "a binary has no ID", "where", "Binaries")
+		}
+		if _, dup := r.pool[id]; dup {
+			return true, errors.New("FileCorrupt", "two binaries have the same ID", "where", "Binaries", "id", id)
+		}
+		text, err := r.textBytes(c)
+		if err != nil {
+			return true, err
+		}
+		defer clear(text)
+		data := make([]byte, base64.StdEncoding.DecodedLen(len(text)))
+		n, err := base64.StdEncoding.Decode(data, text)
+		if err != nil {
+			return true, errors.New("FileCorrupt", "the content of a binary is not base64", "where", "Binaries", "id", id)
+		}
+		data = data[:n]
+		if protected {
+			r.stream.XORKeyStream(data, data)
+		}
+		if compressed && len(data) > 0 {
+			plain, err := gunzip(data, r.maxText)
+			clear(data)
+			if err != nil {
+				return true, err
+			}
+			data = plain
+		}
+		r.pool[id] = poolItem{key: model.BinaryKey{Hash: sha256.Sum256(data), Protected: protected}, data: secret.New(data)}
+		return true, nil
+	})
+}
+
+// setHeaderHash is the setter of Meta/HeaderHash in a KDBX 3 file: its value
+// must be the SHA-256 of the header.
+func (r *xmlReader) setHeaderHash(s string) error {
+	stored, err := base64.StdEncoding.DecodeString(strings.TrimSpace(s))
+	if err != nil {
+		return errors.New("FileCorrupt", "the HeaderHash is not base64", "where", "Meta")
+	}
+	if !bytes.Equal(stored, r.headerHash) {
+		return errors.New("FileCorrupt", "the HeaderHash does not match the header: the file is damaged", "where", "Meta")
+	}
+	r.sawHeaderHash = true
+	return nil
 }
 
 func (r *xmlReader) autoType(se xml.StartElement, a *model.AutoType) error {

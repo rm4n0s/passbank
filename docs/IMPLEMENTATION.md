@@ -352,7 +352,7 @@ Every **Proof** item gives its exact command.
 1. The XML differences of §4.5: ISO 8601 times, `Meta/Binaries` into the attachment pool, and the `HeaderHash` check (a mismatch is `FileCorrupt`).
 2. `Open` dispatches 2.x and 3.x to the new reader; the fuzz seeds include the old fixtures.
 
-**Tests:** every fixture of every version through `Open`; the same content saved as 3.1 and as 4.0 (fixture pairs made from one source) gives equal models by `model.Diff`, apart from the fields 3.1 can't store; `passbank info` goldens for 3.x.
+**Tests:** every fixture of every version through `Open`, the 3.1 files compared with dumps made by an independent program; the same content saved as 3.1 and as 4.0 (fixture pairs made from one source) gives equal models by `model.Diff`, apart from what the two programs do differently; `passbank info` goldens for 3.x.
 
 ---
 

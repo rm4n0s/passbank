@@ -1,0 +1,2 @@
+043b3803ac0a7343913638f62b614416||Sample Entry|User Name|Password|https://keepass.info/|Notes||||0
+28338a8cd548064a94c16e841842f2e2||Sample Entry #2|Michael321|12345|https://keepass.info/help/kb/testform.html|||||0

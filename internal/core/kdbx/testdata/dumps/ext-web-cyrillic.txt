@@ -1,0 +1,2 @@
+10f5657c252f96478deca9f2f17d2142||Sample Entry #2|Michael321|12345|http://keepass.info/help/kb/testform.html|||||0
+cca698fb6427d44bb67ecf5897390651||моя запись|пользователь|пароль|http://keepass.info/|ноутс|теги|поле1=значение1;поле2=значение2||1

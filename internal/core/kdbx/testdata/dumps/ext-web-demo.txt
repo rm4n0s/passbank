@@ -1,0 +1,4 @@
+1f3605b271829042b2acfb4e6ba6cd30||Sample Entry|User Name|Password|http://keepass.info/|Notes||||1
+bea7280af13dfe4e8f4a0bad288eac9f|General|my entry|me|mypass|http://me.me|some notes|my,tag|my field=my val;my field protected=protected val|attachment:6de2ccb163da5f925ea9cdc1298b7c1bd6f7afbbbed41f3d52352f9efbd9db8a|1
+fac2cb944383494dbfee2a03cbe77513||Sample Entry #2|Michael321|12345|http://keepass.info/help/kb/testform.html|||||0
+ffdfdd0661b6074dbd3db73acd404835|Recycle Bin|deleted entry|me|mlrb0P6yZV743YeMfy7P||||||0

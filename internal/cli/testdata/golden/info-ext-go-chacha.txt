@@ -1,0 +1,10 @@
+version          3.1
+cipher           ChaCha20
+kdf              AES-KDF
+kdf-rounds       60000
+compression      GZip
+inner-stream     Salsa20
+groups           8
+entries          4
+attachments      2
+history          1

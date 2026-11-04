@@ -91,8 +91,7 @@ func OpenBytes(ctx context.Context, data []byte, creds crypto.Credentials) (*mod
 	if err != nil {
 		return nil, Info{}, err
 	}
-	if version.Major != 4 {
-		// KDBX 2.x and 3.x arrive with milestone 3.
+	if version.Major < 2 || version.Major > 4 {
 		return nil, Info{}, errors.New("VersionUnsupported", "the file uses a KDBX version that Passbank does not know", "version", version.String())
 	}
 	composite, err := crypto.CompositeKey(creds)
@@ -100,7 +99,11 @@ func OpenBytes(ctx context.Context, data []byte, creds crypto.Credentials) (*mod
 		return nil, Info{}, err
 	}
 	defer composite.Wipe()
-	c, err := readContainer4(ctx, data, composite)
+	read := readContainer4
+	if version.Major < 4 {
+		read = readContainer3
+	}
+	c, err := read(ctx, data, composite)
 	if err != nil {
 		return nil, Info{}, err
 	}
@@ -109,7 +112,7 @@ func OpenBytes(ctx context.Context, data []byte, creds crypto.Credentials) (*mod
 	if err := ctx.Err(); err != nil {
 		return nil, Info{}, errors.NewErr("ReadCancelled", err)
 	}
-	db, err := parseXML4(ctx, c)
+	db, err := parseXML(ctx, c)
 	if err != nil {
 		return nil, Info{}, err
 	}

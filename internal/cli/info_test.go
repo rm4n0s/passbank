@@ -88,6 +88,11 @@ func TestInfoGolden(t *testing.T) {
 		{"info-k41-fields.txt", "k41-fields.kdbx", nil, "fixture-rich"},
 		{"info-k4-empty.txt", "k4-empty.kdbx", nil, "fixture-min"},
 		{"info-k4-rich-nocompression.txt", "k4-rich-nocompression.kdbx", nil, "fixture-rich"},
+		{"info-k31-rich.txt", "k31-rich.kdbx", nil, "fixture-rich"},
+		{"info-ext-rs-password.txt", "ext/rs-password.kdbx", nil, "demopass"},
+		{"info-ext-go-chacha.txt", "ext/go-chacha.kdbx", nil, "abcdefg12345678"},
+		{"info-ext-go-twofish.txt", "ext/go-twofish.kdbx", nil, "test1234test"},
+		{"info-ext-web-cyrillic.txt", "ext/web-cyrillic.kdbx", nil, "пароль"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.golden, func(t *testing.T) {
@@ -177,6 +182,15 @@ func TestInfoFailures(t *testing.T) {
 		t.Fatal(err)
 	}
 	rich := kdbxFixture(t, "k4-rich.kdbx")
+	future := filepath.Join(dir, "future.kdbx")
+	data, err := os.ReadFile(rich)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data[10] = 5 // the major version
+	if err := os.WriteFile(future, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
 	tests := []struct {
 		name       string
 		term       *scriptedTerminal
@@ -202,8 +216,8 @@ func TestInfoFailures(t *testing.T) {
 			"passbank info: DIR/none.kdbx cannot be read: open DIR/none.kdbx: no such file or directory\n"},
 		{"not a database", &scriptedTerminal{tty: true, password: "x"}, []string{"info", notKdbx}, ExitFailure,
 			"passbank info: DIR/text.txt is not a KeePass database\n"},
-		{"a KDBX 3 file", &scriptedTerminal{tty: true, password: "fixture-rich"}, []string{"info", kdbxFixture(t, "k31-rich.kdbx")}, ExitFailure,
-			"passbank info: FILE uses KDBX version 3.1, which Passbank cannot read\n"},
+		{"a KDBX 5 file", &scriptedTerminal{tty: true, password: "x"}, []string{"info", future}, ExitFailure,
+			"passbank info: DIR/future.kdbx uses KDBX version 5.0, which Passbank cannot read\n"},
 		{"no file", &scriptedTerminal{}, []string{"info"}, ExitUsage,
 			"passbank info: info needs exactly one file\nusage: passbank info [--keyfile PATH] [--password-file PATH] [--no-password] [--debug] FILE\n"},
 		{"two files", &scriptedTerminal{}, []string{"info", rich, rich}, ExitUsage,
@@ -219,7 +233,7 @@ func TestInfoFailures(t *testing.T) {
 			if status != tt.wantStatus || out != "" {
 				t.Errorf("status %d (want %d), stdout %q", status, tt.wantStatus, out)
 			}
-			got := strings.ReplaceAll(strings.ReplaceAll(errs, rich, "FILE"), kdbxFixture(t, "k31-rich.kdbx"), "FILE")
+			got := strings.ReplaceAll(errs, rich, "FILE")
 			got = strings.ReplaceAll(got, dir, "DIR")
 			if got != tt.wantErr {
 				t.Errorf("stderr = %q\nwant     %q", got, tt.wantErr)

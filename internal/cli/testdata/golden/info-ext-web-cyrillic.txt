@@ -1,0 +1,10 @@
+version          3.1
+cipher           AES-256
+kdf              AES-KDF
+kdf-rounds       100
+compression      none
+inner-stream     Salsa20
+groups           7
+entries          2
+attachments      0
+history          1
