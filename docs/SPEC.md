@@ -255,18 +255,23 @@ The order of children follows the chosen input; items from the other input are a
 
 - **Union**: the history of a kept entry is the union of both inputs' histories for that UUID, without duplicates (two versions with the same last modification time and equal content), sorted by last modification time
 - **The version not chosen**: when the chosen version differs from the other one, the other version is added to the history too, so the merge can be undone in any KeePass client
+- **`both`**: each copy keeps the history it came with; nothing is added or merged
+- **Equal pairs** get the union too, and no extra version (nothing differs)
+- **A move alone** (the entries differ only in their group) adds no version: a history version has no location
 - **No trimming**: history is not trimmed to the history limits. Clients trim on their next save
 
 ### 10.3 Deleted objects
 
-The result's deleted-objects list is the union of both lists, minus every UUID the result contains.
+The result's deleted-objects list is the union of both lists (A's records first, in A's order, then B's new ones), minus every UUID the result contains. A UUID in both lists keeps the later deletion time. An item the user drops from the result is not recorded as deleted.
 
 ### 10.4 Meta
 
 - Settings come from the input chosen for the `settings` change
 - Custom icons: the union by UUID. When both have the same UUID with different data, the newer icon wins (in 4.1), else A's
 - Custom data: the union by key. When both have a key with different values, the value comes from the input that supplied the settings
-- The recycle bin is A's group, holding the recycle-bin contents of both inputs as chosen
+- The recycle bin is A's group, holding the recycle-bin contents of both inputs as chosen. When A has no recycle bin and B's group is kept, B's group becomes the bin
+- "Settings" are the fields of the `settings` change (with their change times): name, description, default user name, color, history limits, recycle-bin on/off, memory protection. Everything else in `Meta` (generator, unknown XML, master-key data) stays A's
+- A reference in `Meta` to a group that is not in the result (the recycle bin, the entry templates group, the last selected and last top visible group) is cleared
 
 ### 10.5 Attachments
 

@@ -118,8 +118,11 @@ func newBuilder(a, b *model.Database) *builder {
 // dropped.
 func (bd *builder) run(changes []diff.Change, choices []plan.Choice) error {
 	choiceOf := make(map[model.UUID]plan.Choice, len(changes))
+	settingsFromB := false
 	for i, c := range changes {
-		if c.Item != diff.ItemSettings {
+		if c.Item == diff.ItemSettings {
+			settingsFromB = choices[i] == plan.TakeB
+		} else {
 			choiceOf[c.UUID] = choices[i]
 		}
 	}
@@ -146,6 +149,10 @@ func (bd *builder) run(changes []diff.Change, choices []plan.Choice) error {
 			bd.removeGroup(c.Group[diff.SideA].UUID)
 		}
 	}
+	bd.mergeHistories(choiceOf)
+	bd.mergeMeta(settingsFromB)
+	bd.mergeDeleted()
+	bd.rebuildPool()
 	return nil
 }
 
@@ -251,6 +258,8 @@ func (bd *builder) removeGroup(u model.UUID) {
 		p.Groups = slices.DeleteFunc(p.Groups, func(x *model.Group) bool { return x == g })
 	}
 	delete(bd.groups, u)
+	delete(bd.parent, g) // the group and what is in it are no longer below the root
+	g.Wipe()
 }
 
 // entry applies the choice for one entry change.
@@ -308,6 +317,7 @@ func (bd *builder) replaceWithB(c diff.Change) error {
 	if cur == dst {
 		i := slices.IndexFunc(cur.Entries, func(e *model.Entry) bool { return e.UUID == uuid })
 		if i >= 0 {
+			cur.Entries[i].Wipe()
 			cur.Entries[i] = cp
 			return nil
 		}
@@ -324,7 +334,13 @@ func (bd *builder) removeEntry(u model.UUID) {
 	if g == nil {
 		return
 	}
-	g.Entries = slices.DeleteFunc(g.Entries, func(e *model.Entry) bool { return e.UUID == u })
+	g.Entries = slices.DeleteFunc(g.Entries, func(e *model.Entry) bool {
+		if e.UUID != u {
+			return false
+		}
+		e.Wipe() // the result's own copy
+		return true
+	})
 	delete(bd.entryIn, u)
 }
 

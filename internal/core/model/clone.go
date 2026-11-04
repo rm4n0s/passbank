@@ -172,3 +172,20 @@ func (e *Entry) Clone() *Entry { return e.clone() }
 
 // Clone returns a deep copy of the group with all its subgroups and entries.
 func (g *Group) Clone() *Group { return g.clone() }
+
+// Wipe overwrites every secret of the entry and of the versions in its history
+// with zeros. The entry must not be used afterwards.
+func (e *Entry) Wipe() { e.wipe() }
+
+// Wipe overwrites every secret of the group, its subgroups and their entries with
+// zeros (attachments are held by the database, not by the group). The group must
+// not be used afterwards.
+func (g *Group) Wipe() {
+	wipeRaw(g.Raw)
+	for _, e := range g.Entries {
+		e.wipe()
+	}
+	for _, c := range g.Groups {
+		c.Wipe()
+	}
+}

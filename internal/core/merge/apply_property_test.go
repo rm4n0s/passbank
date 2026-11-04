@@ -55,6 +55,30 @@ func related(seed uint64) (a, b *model.Database) {
 	extra := modeltest.Random(seed+9000, modeltest.DefaultOptions())
 	var fromExtra []*model.Entry
 	extra.WalkEntries(func(_ *model.Group, e *model.Entry) bool { fromExtra = append(fromExtra, e); return len(fromExtra) < 3 })
+	// The new entries bring their binaries and icons with them.
+	bring := func(e *model.Entry) {
+		take := func(e *model.Entry) {
+			for _, at := range e.Attachments {
+				if _, ok := b.Binaries[at.Binary]; !ok {
+					b.Binaries[at.Binary] = &model.Binary{Data: extra.Binaries[at.Binary].Data.Clone()}
+				}
+			}
+			if !e.CustomIcon.IsZero() && !slices.ContainsFunc(b.Meta.CustomIcons, func(ic model.CustomIcon) bool { return ic.UUID == e.CustomIcon }) {
+				for _, ic := range extra.Meta.CustomIcons {
+					if ic.UUID == e.CustomIcon {
+						b.Meta.CustomIcons = append(b.Meta.CustomIcons, ic)
+					}
+				}
+			}
+		}
+		take(e)
+		for _, h := range e.History {
+			take(h)
+		}
+	}
+	for _, e := range fromExtra {
+		bring(e)
+	}
 	if len(fromExtra) > 0 {
 		b.Root.Entries = append(b.Root.Entries, fromExtra[0])
 		if seed%2 == 0 { // A deleted it, before or after B's last change

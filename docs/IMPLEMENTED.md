@@ -468,3 +468,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** History, deleted objects, Meta and attachments are 7.2. Two tags are new in SPEC §15: `PlanMismatch` and `MergeGroupCycle`. A kept group is created even when everything in it is dropped (SPEC §10.1 now says so).
 
+## 7.2 History, deletions, meta and attachments
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-7.2-history-meta
+- **Summary:** `merge.Apply` now finishes the result as SPEC §10.2–§10.5 say. History: every entry both inputs hold gets the union of both histories (without duplicates by last modification time and content, oldest first, never trimmed), plus the version the plan did not take when `take-a`/`take-b` chose between two that differ in content (`both` leaves each copy's own history). Deleted objects: the union of both lists minus every UUID in the result. Meta: A's, with B's settings when the `settings` change takes B; custom icons united by UUID (a conflict goes to the later modification time, else A); custom data united by key (a conflict goes to the input that gave the settings); B's recycle bin becomes the bin when A has none; references to groups that are gone are cleared. Attachments: the pool is rebuilt from the references of the entries and their histories, each binary once, from A's pool or else B's; the rest is wiped. The result's own copies that are replaced or dropped are wiped (`model.Entry.Wipe`, `model.Group.Wipe`, `model.SameVersion` are new in the model).
+- **Main files:** internal/core/merge/finish.go, internal/core/merge/apply.go.
+- **Tests:** 8 history cases (union with duplicates, same time other content, `take-a`, `take-b`, the other version already there, `both`, no history, equal entries), 60 versions kept untrimmed, deleted objects (kept and dropped entries, the later time, A's order), Meta (settings from A and from B, custom data conflicts, icon unions with later, earlier and missing times, copies not shared), the recycle bin (adopted, dropped, A's own) and cleared references (also below a dropped group), the attachment pool (shared binary once, unused and dropped-entry binaries gone, history-only binary kept, B's binary copied), and, over 40 related random pairs and the four rules, no dangling attachment, icon or group reference.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** a move alone adds no history version; Public custom data (the KDBX 4 header's) and unknown XML of the database stay A's, as they describe A's file. Neither is in the plan's task list; both are now in SPEC §10.
+

@@ -349,3 +349,11 @@ func (d *differ) rawNode(path string, a, b *RawNode) {
 		d.rawNode(fmt.Sprintf("%s/Children[%d]", path, i), a.Children[i], b.Children[i])
 	}
 }
+
+// SameVersion reports whether two entries hold the same everything but their
+// history: two versions of an entry that are equal in this sense are one version.
+func SameVersion(a, b *Entry) bool {
+	d := &differ{}
+	d.entryBody("", a, b)
+	return len(d.lines) == 0
+}
