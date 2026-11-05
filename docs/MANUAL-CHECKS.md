@@ -68,3 +68,49 @@ compare, choose in the list, open the details of "Banking / My bank" and write a
 Report any control that Orca reads without a name or twice, and any value that it reads aloud although it
 should be hidden (the password fields must say "password" and read nothing, and the table must never read the
 passwords).
+
+## 9.2: two of your own databases (ALWAYS ON COPIES)
+
+The only check on real data. Passbank never changes the two databases it reads and never overwrites an existing
+file without being told, but run everything on copies in a scratch folder anyway.
+
+1. Make a scratch folder and copy two of your databases (and their key files, if any) into it. Never point
+   Passbank at the originals.
+
+   ```
+   mkdir -p ~/passbank-scratch && cd ~/passbank-scratch
+   cp /path/to/first.kdbx a.kdbx && cp /path/to/second.kdbx b.kdbx      # and key files, if you use them
+   ```
+
+2. Build the two programs (from the Passbank folder) and look at the files. `passbank` asks for each password
+   on the terminal, without echo (add `--keyfile-a a.keyx` and so on for key files):
+
+   ```
+   go build -o ~/passbank-scratch/passbank ./cmd/passbank
+   go build -tags glutter_release -o ~/passbank-scratch/passbank-gui ./cmd/passbank-gui
+   cd ~/passbank-scratch
+   ./passbank info a.kdbx
+   ./passbank info b.kdbx
+   ```
+
+3. See the changes, write them to a plan, read the plan, and merge with it. Then merge interactively once.
+
+   ```
+   ./passbank diff a.kdbx b.kdbx -o plan.txt
+   less plan.txt
+   ./passbank merge a.kdbx b.kdbx --plan plan.txt -o merged.kdbx
+   ./passbank merge a.kdbx b.kdbx -o interactive.kdbx
+   ./passbank merge a.kdbx b.kdbx --prefer union --format 3.1 -o old.kdbx      # lists what 3.1 would lose, if anything
+   ```
+
+4. Do the same in the application: `./passbank-gui`. Unlock A and B, compare, change some choices, save the plan,
+   write `gui.kdbx`.
+
+5. Open `merged.kdbx`, `interactive.kdbx` and `gui.kdbx` in KeePassXC (and, if you have it, KeePass). Look at
+   the groups, the entries you know differ, history, attachments, custom icons, tags, expiry dates and the
+   database settings. Check that the entries you chose are there and that nothing you kept is missing.
+6. Check that `a.kdbx` and `b.kdbx` are unchanged: `sha256sum a.kdbx b.kdbx` against the originals.
+
+Report anything wrong: what you did, what you expected, what happened (without passwords or entry contents; a
+title or a field name is enough). Each problem is fixed with a regression test made from fixture data, never
+from your data.
