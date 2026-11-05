@@ -520,3 +520,17 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** Enter takes the choice shown, which is the default of §8 unless an earlier answer (or dropping a group) changed it, so that the cascade of a group drop is not undone by Enter (SPEC §12.1 says so). Two tags are new in SPEC §15: `LineTooLong` and `LineReadFailed`.
 
+## 7.6 End-to-end merges
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-7.6-end-to-end
+- **Summary:** the whole command-line path is tested end to end, and the merged files are opened in KeePassXC. `modeltest.LargePair(n)` makes two related databases of n entries (changed, deleted, moved and new entries) for the size tests.
+- **Main files:** internal/cli/e2e_test.go, internal/cli/interop_test.go, internal/cli/large_test.go, internal/core/model/modeltest/pair.go (`LargePair`).
+- **Tests:** for each rule, `diff --prefer RULE -o plan`, then `merge --plan` gives the same database as `merge --prefer RULE` (listing and `model.Diff`); an interactive session with scripted answers gives the same database as a hand-edited plan with those choices; 2,000 entries per input (A as KDBX 4, B as KDBX 3.1) through `diff` and `merge` with the expected number of entries. Interop (`go test -tags passbank_keepassxc ./internal/cli`): the files for the rules `newer`, `a`, `b` and `union` as KDBX 4.0, 4.1, 3.1 and 2.0 with the default encryption of each version open in KeePassXC 2.7.12, which lists exactly the expected entries and shows the expected password of "My bank".
+- **Timing:** (filled in when the run alone has finished; see below)
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none.
+- **Manual checks:** none new.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the 2-second limit of the plan holds for comparing and merging in the core and for the command `diff`; the command `merge` also writes the result and reads it back to verify it (SPEC §5), so it has a limit of 5 seconds. The timing test has the build tag `passbank_large` and runs alone (`scripts/heavy.sh --alone`).
+

@@ -123,3 +123,79 @@ func MergePair() (a, b *model.Database) {
 	), model.DeletedObject{UUID: pairUUID(14), DeletionTime: pairTime(2)})
 	return a, b
 }
+
+// LargePair returns two related databases with n entries each, for tests of speed
+// and size: A has n entries in groups of 100, and B is a copy edited elsewhere (one
+// entry in ten has another password and is newer, one in twenty-five is deleted,
+// one in thirty-three has moved to another group), with n/20 entries that only B
+// has. The same n always gives the same databases.
+func LargePair(n int) (a, b *model.Database) {
+	root := pairGroup(1, "Root", "", 0)
+	var groups []*model.Group
+	for g := 0; g*100 < n; g++ {
+		grp := &model.Group{
+			UUID: model.UUID{0: 0xab, 1: 0xce, 2: byte(g >> 8), 3: byte(g)}, Name: "Group " + itoa(g), IconID: 48,
+			Times: model.Times{Creation: pairTime(0), LastModification: pairTime(0)},
+		}
+		groups = append(groups, grp)
+		root.Groups = append(root.Groups, grp)
+	}
+	entry := func(i int, password string, modified int) *model.Entry {
+		e := pairEntry(0, "Entry "+itoa(i), "user"+itoa(i), password, "https://site"+itoa(i)+".example.com", modified)
+		e.UUID = model.UUID{0: 0xab, 1: 0xcf, 2: byte(i >> 24), 3: byte(i >> 16), 4: byte(i >> 8), 5: byte(i)}
+		return e
+	}
+	for i := 0; i < n; i++ {
+		g := groups[i/100]
+		g.Entries = append(g.Entries, entry(i, "password-"+itoa(i), 1))
+	}
+	a = pairDatabase("Large A", root)
+	b = a.Clone()
+	b.Meta.DatabaseName = "Large B"
+	bGroups := b.Root.Groups
+	for gi, g := range bGroups {
+		var kept []*model.Entry
+		for _, e := range g.Entries {
+			i := gi*100 + indexIn(a.Root.Groups[gi], e.UUID)
+			switch {
+			case i%25 == 2:
+				b.DeletedObjects = append(b.DeletedObjects, model.DeletedObject{UUID: e.UUID, DeletionTime: pairTime(5)})
+				continue
+			case i%33 == 3:
+				other := bGroups[(gi+1)%len(bGroups)]
+				other.Entries = append(other.Entries, e)
+				continue
+			case i%10 == 0:
+				e.Fields[2].Value = secret.New([]byte("changed-" + itoa(i)))
+				e.Times.LastModification = pairTime(9)
+			}
+			kept = append(kept, e)
+		}
+		g.Entries = kept
+	}
+	for i := 0; i < n/20; i++ {
+		g := bGroups[i%len(bGroups)]
+		g.Entries = append(g.Entries, entry(n+i, "new-"+itoa(i), 2))
+	}
+	return a, b
+}
+
+func indexIn(g *model.Group, u model.UUID) int {
+	for i, e := range g.Entries {
+		if e.UUID == u {
+			return i
+		}
+	}
+	return -1
+}
+
+func itoa(n int) string {
+	if n == 0 {
+		return "0"
+	}
+	var b []byte
+	for ; n > 0; n /= 10 {
+		b = append([]byte{byte('0' + n%10)}, b...)
+	}
+	return string(b)
+}
