@@ -97,11 +97,12 @@ func (s *buttonState) Build(bc widgets.BuildContext) widgets.Widget {
 			b.onPressed()
 		}
 	}
-	label := widgets.NewText(b.label, widgets.TextOpts{
+	// The Semantics below names the button; the visible text must not add to it.
+	label := widgets.NewExcludeSemantics(widgets.NewText(b.label, widgets.TextOpts{
 		Style: TextStyle(SizeBody, ui.FontWeightW700, fg), MaxLines: foundation.Some(1), Overflow: painting.TextOverflowEllipsis,
-	})
+	}))
 	body := widgets.NewContainer(widgets.NewCenter(label, widgets.CenterOpts{WidthFactor: foundation.Some(1.0), HeightFactor: foundation.Some(1.0)}), widgets.ContainerOpts{
-		Height:  foundation.Some(ControlHeight),
+		Height:  foundation.Some(Scaled(bc, ControlHeight)),
 		Padding: painting.NewEdgeInsetsSymmetric(0, SpaceL),
 		Decoration: painting.NewBoxDecoration(painting.BoxDecorationOpts{
 			Color:        foundation.Some(bg),
@@ -110,10 +111,11 @@ func (s *buttonState) Build(bc widgets.BuildContext) widgets.Widget {
 		}),
 	})
 	var tap widgets.Widget = widgets.NewGestureDetector(body, widgets.GestureDetectorOpts{
-		OnTap:       func() { activate() },
-		OnTapDown:   func(gestures.TapDownDetails) { s.SetState(func() { s.pressed = enabled }) },
-		OnTapUp:     func(gestures.TapUpDetails) { s.SetState(func() { s.pressed = false }) },
-		OnTapCancel: func() { s.SetState(func() { s.pressed = false }) },
+		ExcludeFromSemantics: true, // the Semantics below carries the tap
+		OnTap:                func() { activate() },
+		OnTapDown:            func(gestures.TapDownDetails) { s.SetState(func() { s.pressed = enabled }) },
+		OnTapUp:              func(gestures.TapUpDetails) { s.SetState(func() { s.pressed = false }) },
+		OnTapCancel:          func() { s.SetState(func() { s.pressed = false }) },
 	})
 	cursor := services.MouseCursor(services.SystemMouseCursors.Basic)
 	if enabled {

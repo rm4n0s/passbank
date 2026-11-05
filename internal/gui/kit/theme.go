@@ -91,6 +91,13 @@ const (
 	SizeTitle = 22.0
 )
 
+// Scaled returns a size multiplied by the text scale of the system (never less than
+// the size), for what has to grow with the text: the height of a button, a column
+// next to text. The context depends on the scale.
+func Scaled(bc widgets.BuildContext, size float64) float64 {
+	return size * max(1, widgets.MediaQueryOf(bc).TextScaler.TextScaleFactor())
+}
+
 // TextStyle returns a text style of the theme: the sans font, in the given size
 // and weight, in the color.
 func TextStyle(size float64, weight ui.FontWeight, color ui.Color) *painting.TextStyle {

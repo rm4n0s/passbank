@@ -31,9 +31,9 @@ func focusOrder(ts *gluttertest.Tester, n int) []string {
 func TestFocusOrder(t *testing.T) {
 	open := []string{
 		"Database A file", "Choose… Database A file", "Password of database A", "Show the Password of database A",
-		"Key file of database A", "Choose… Key file of database A", "Unlock",
+		"Key file of database A", "Choose… Key file of database A", "Unlock database A",
 		"Database B file", "Choose… Database B file", "Password of database B", "Show the Password of database B",
-		"Key file of database B", "Choose… Key file of database B", "Unlock",
+		"Key file of database B", "Choose… Key file of database B", "Unlock database B",
 		"Swap A and B", // Compare has no action yet, so it takes no focus
 		"Database A file",
 	}

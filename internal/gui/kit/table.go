@@ -72,10 +72,10 @@ func (s *fieldTableState) Build(bc widgets.BuildContext) widgets.Widget {
 	}
 	pad := painting.NewEdgeInsetsSymmetric(SpaceS, SpaceM)
 	header := widgets.NewPadding(pad, widgets.NewRow([]widgets.Widget{
-		widgets.NewSizedBox(cell("", th.Caption()), widgets.SizedBoxOpts{Width: foundation.Some(130.0)}),
+		widgets.NewSizedBox(cell("", th.Caption()), widgets.SizedBoxOpts{Width: foundation.Some(Scaled(bc, 130.0))}),
 		widgets.NewExpanded(cell(t.headerA, th.Bold())),
 		widgets.NewExpanded(cell(t.headerB, th.Bold())),
-		widgets.NewSizedBox(nil, widgets.SizedBoxOpts{Width: foundation.Some(64.0)}),
+		widgets.NewSizedBox(nil, widgets.SizedBoxOpts{Width: foundation.Some(Scaled(bc, 64.0))}),
 	}))
 	rows := []widgets.Widget{header}
 	for i, r := range t.rows {
@@ -96,23 +96,23 @@ func (s *fieldTableState) Build(bc widgets.BuildContext) widgets.Widget {
 		if r.Protected && s.revealed[i] {
 			valueStyle = TextStyle(SizeBody, ui.FontWeightW400, th.Text)
 		}
-		var toggle widgets.Widget = widgets.NewSizedBox(nil, widgets.SizedBoxOpts{Width: foundation.Some(64.0)})
+		var toggle widgets.Widget = widgets.NewSizedBox(nil, widgets.SizedBoxOpts{Width: foundation.Some(Scaled(bc, 64.0))})
 		if r.Protected {
 			label, sem := "Show", "Show the "+r.Name+" of A and B"
 			if s.revealed[i] {
 				label, sem = "Hide", "Hide the "+r.Name+" of A and B"
 			}
 			toggle = widgets.NewSizedBox(NewLinkButton(label, sem, func() { s.SetState(func() { s.revealed[i] = !s.revealed[i] }) }),
-				widgets.SizedBoxOpts{Width: foundation.Some(64.0)})
+				widgets.SizedBoxOpts{Width: foundation.Some(Scaled(bc, 64.0))})
 		}
 		bg := th.Surface
 		if r.Differs {
 			bg = th.Differs
 		}
 		rows = append(rows, widgets.NewSemantics(widgets.NewContainer(widgets.NewRow([]widgets.Widget{
-			widgets.NewSizedBox(cell(r.Name, th.Bold()), widgets.SizedBoxOpts{Width: foundation.Some(130.0)}),
-			widgets.NewExpanded(widgets.NewPadding(painting.NewEdgeInsetsFromLTRB(0, 0, SpaceM, 0), widgets.NewText(show(r.A, r.MissingA), widgets.TextOpts{Style: valueStyle}))),
-			widgets.NewExpanded(widgets.NewPadding(painting.NewEdgeInsetsFromLTRB(0, 0, SpaceM, 0), widgets.NewText(show(r.B, r.MissingB), widgets.TextOpts{Style: valueStyle}))),
+			widgets.NewSizedBox(widgets.NewExcludeSemantics(cell(r.Name, th.Bold())), widgets.SizedBoxOpts{Width: foundation.Some(Scaled(bc, 130.0))}),
+			widgets.NewExpanded(widgets.NewPadding(painting.NewEdgeInsetsFromLTRB(0, 0, SpaceM, 0), widgets.NewExcludeSemantics(widgets.NewText(show(r.A, r.MissingA), widgets.TextOpts{Style: valueStyle})))),
+			widgets.NewExpanded(widgets.NewPadding(painting.NewEdgeInsetsFromLTRB(0, 0, SpaceM, 0), widgets.NewExcludeSemantics(widgets.NewText(show(r.B, r.MissingB), widgets.TextOpts{Style: valueStyle})))),
 			toggle,
 		}, widgets.RowOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentStart}), widgets.ContainerOpts{
 			Padding: pad,
@@ -125,11 +125,25 @@ func (s *fieldTableState) Build(bc widgets.BuildContext) widgets.Widget {
 	return widgets.NewColumn(rows, widgets.ColumnOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentStretch})
 }
 
-// rowLabel is what a screen reader says for a row: never a protected value.
+// rowLabel is what a screen reader says for a row: the name, whether A and B differ
+// and, for an ordinary field, the two values. A protected value is never read, also
+// when the user has revealed it on the screen.
 func rowLabel(r FieldRow) string {
 	state := "same in A and B"
 	if r.Differs {
 		state = "differs between A and B"
 	}
-	return r.Name + ", " + state
+	if r.Protected {
+		return r.Name + ", " + state + ". The values are hidden."
+	}
+	value := func(v string, missing bool) string {
+		switch {
+		case missing:
+			return "none"
+		case v == "":
+			return "empty"
+		}
+		return v
+	}
+	return r.Name + ", " + state + ". A: " + value(r.A, r.MissingA) + ". B: " + value(r.B, r.MissingB) + "."
 }

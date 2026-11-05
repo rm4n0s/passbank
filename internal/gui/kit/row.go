@@ -57,7 +57,7 @@ func (s *listRowState) Build(bc widgets.BuildContext) widgets.Widget {
 	if r.selected {
 		border = painting.NewBorderAll(painting.BorderSideOpts{Color: foundation.Some(th.Primary), Width: foundation.Some(2.0)})
 	}
-	body := widgets.NewContainer(r.child, widgets.ContainerOpts{
+	body := widgets.NewContainer(widgets.NewExcludeSemantics(r.child), widgets.ContainerOpts{
 		Padding: painting.NewEdgeInsetsSymmetric(SpaceS, SpaceM),
 		Decoration: painting.NewBoxDecoration(painting.BoxDecorationOpts{
 			Color: foundation.Some(bg), Border: border, BorderRadius: painting.NewBorderRadiusCircular(Radius),
@@ -70,7 +70,7 @@ func (s *listRowState) Build(bc widgets.BuildContext) widgets.Widget {
 		kb := widgets.WidgetsBindingOf(s.Context()).Keyboard()
 		r.onTap(Modifiers{Shift: kb.IsShiftPressed(), Ctrl: kb.IsControlPressed()})
 	}
-	var w widgets.Widget = widgets.NewGestureDetector(body, widgets.GestureDetectorOpts{OnTap: tap})
+	var w widgets.Widget = widgets.NewGestureDetector(body, widgets.GestureDetectorOpts{OnTap: tap, ExcludeFromSemantics: true})
 	w = widgets.NewMouseRegion(w, widgets.MouseRegionOpts{
 		Cursor:  services.SystemMouseCursors.Click,
 		OnEnter: func(*gestures.PointerEnterEvent) { s.SetState(func() { s.hovered = true }) },

@@ -322,7 +322,8 @@ func (s *screenState) card(th kit.Theme, heading string, children ...widgets.Wid
 // row is a label above a control.
 func row(th kit.Theme, label string, control widgets.Widget) widgets.Widget {
 	return widgets.NewPadding(painting.NewEdgeInsetsFromLTRB(0, 0, 0, kit.SpaceM), widgets.NewColumn([]widgets.Widget{
-		widgets.NewText(label, widgets.TextOpts{Style: th.Caption()}),
+		// The control names itself; the caption is for the eyes.
+		widgets.NewExcludeSemantics(widgets.NewText(label, widgets.TextOpts{Style: th.Caption()})),
 		widgets.NewSizedBox(nil, widgets.SizedBoxOpts{Height: foundation.Some(kit.SpaceS)}),
 		control,
 	}, widgets.ColumnOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentStart}))

@@ -106,12 +106,20 @@ func (s *screenState) Build(bc widgets.BuildContext) widgets.Widget {
 		return widgets.NewSizedBox(nil, widgets.SizedBoxOpts{Height: foundation.Some(h)})
 	}
 
+	compact := isCompact(bc)
 	var content widgets.Widget
 	switch {
 	case s.model == nil && w.sess.Ready():
 		content = widgets.NewCenter(kit.NewProgress("Comparing the two databases…", foundation.None[float64]()))
 	case s.model == nil:
 		content = widgets.NewCenter(kit.NewBanner(kit.ErrorBanner, "Unlock both databases first.", ""))
+	case compact:
+		// The list above the details, each of a height of its own; the page scrolls.
+		content = widgets.NewColumn([]widgets.Widget{
+			widgets.NewSizedBox(NewList(s.model, s.refresh), widgets.SizedBoxOpts{Height: foundation.Some(kit.Scaled(bc, compactListHeight))}),
+			gap(kit.SpaceL),
+			widgets.NewSizedBox(s.details(th), widgets.SizedBoxOpts{Height: foundation.Some(kit.Scaled(bc, compactDetailsHeight))}),
+		}, widgets.ColumnOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentStretch})
 	default:
 		content = widgets.NewRow([]widgets.Widget{
 			widgets.NewSizedBox(NewList(s.model, s.refresh), widgets.SizedBoxOpts{Width: foundation.Some(ListWidth)}),
@@ -140,17 +148,39 @@ func (s *screenState) Build(bc widgets.BuildContext) widgets.Widget {
 		gap(kit.SpaceL),
 	}
 	column = append(column, s.banners(gap)...)
-	column = append(column,
-		widgets.NewExpanded(content),
-		gap(kit.SpaceL),
-		widgets.NewRow([]widgets.Widget{
-			kit.NewButton("Back", w.onBack),
-			widgets.NewExpanded(widgets.NewPadding(painting.NewEdgeInsetsSymmetric(0, kit.SpaceL),
-				widgets.NewText(s.footer(), widgets.TextOpts{Style: th.Caption(), MaxLines: foundation.Some(1), Overflow: painting.TextOverflowEllipsis}))),
-			kit.NewButton("Next: write the new database", next, kit.ButtonOpts{Kind: kit.Primary}),
-		}, widgets.RowOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentCenter}))
-	return widgets.NewPadding(painting.NewEdgeInsetsAll(kit.SpaceXL),
-		widgets.NewColumn(column, widgets.ColumnOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentStretch}))
+	footer := widgets.NewRow([]widgets.Widget{
+		kit.NewButton("Back", w.onBack),
+		widgets.NewExpanded(widgets.NewPadding(painting.NewEdgeInsetsSymmetric(0, kit.SpaceL),
+			widgets.NewText(s.footer(), widgets.TextOpts{Style: th.Caption(), MaxLines: foundation.Some(1), Overflow: painting.TextOverflowEllipsis}))),
+		kit.NewButton("Next: write the new database", next, kit.ButtonOpts{Kind: kit.Primary}),
+	}, widgets.RowOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentCenter})
+	stretch := widgets.ColumnOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentStretch}
+	if compact {
+		// Everything but the buttons at the foot scrolls.
+		column = append(column, content)
+		return widgets.NewPadding(painting.NewEdgeInsetsAll(kit.SpaceXL), widgets.NewColumn([]widgets.Widget{
+			widgets.NewExpanded(widgets.NewSingleChildScrollView(widgets.NewColumn(column, stretch))),
+			gap(kit.SpaceL),
+			footer,
+		}, stretch))
+	}
+	column = append(column, widgets.NewExpanded(content), gap(kit.SpaceL), footer)
+	return widgets.NewPadding(painting.NewEdgeInsetsAll(kit.SpaceXL), widgets.NewColumn(column, stretch))
+}
+
+// The heights of the list and of the details when the screen is compact, before the
+// text size is applied.
+const (
+	compactListHeight    = 420.0
+	compactDetailsHeight = 520.0
+)
+
+// isCompact says whether the window or the text is too small for the list and the
+// details side by side with the page fixed: the page then scrolls, with the list
+// above the details.
+func isCompact(bc widgets.BuildContext) bool {
+	size := widgets.MediaQueryOf(bc).Size
+	return kit.Scaled(bc, 1) > 1.25 || size.Width < 1000 || size.Height < 700
 }
 
 // banners are what needs the user's attention above the list: the result of the

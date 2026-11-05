@@ -73,7 +73,7 @@ func (s *chipState) Build(bc widgets.BuildContext) widgets.Widget {
 	body := widgets.NewContainer(widgets.NewCenter(widgets.NewText(c.label, widgets.TextOpts{
 		Style: TextStyle(SizeSmall, ui.FontWeightW700, fg), MaxLines: foundation.Some(1),
 	}), widgets.CenterOpts{WidthFactor: foundation.Some(1.0), HeightFactor: foundation.Some(1.0)}), widgets.ContainerOpts{
-		Height:  foundation.Some(ChipHeight),
+		Height:  foundation.Some(Scaled(bc, ChipHeight)),
 		Padding: painting.NewEdgeInsetsSymmetric(0, SpaceM+SpaceS),
 		Decoration: painting.NewBoxDecoration(painting.BoxDecorationOpts{
 			Color:        foundation.Some(bg),
@@ -81,7 +81,7 @@ func (s *chipState) Build(bc widgets.BuildContext) widgets.Widget {
 			BorderRadius: painting.NewBorderRadiusCircular(ChipHeight / 2),
 		}),
 	})
-	var w widgets.Widget = widgets.NewGestureDetector(body, widgets.GestureDetectorOpts{OnTap: toggle})
+	var w widgets.Widget = widgets.NewGestureDetector(widgets.NewExcludeSemantics(body), widgets.GestureDetectorOpts{OnTap: toggle, ExcludeFromSemantics: true})
 	w = widgets.NewMouseRegion(w, widgets.MouseRegionOpts{
 		OnEnter: func(*gestures.PointerEnterEvent) { s.SetState(func() { s.hovered = true }) },
 		OnExit:  func(*gestures.PointerExitEvent) { s.SetState(func() { s.hovered = false }) },

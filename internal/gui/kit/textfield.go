@@ -125,11 +125,14 @@ func (s *textFieldState) Build(bc widgets.BuildContext) widgets.Widget {
 		OnChanged: o.OnChanged, OnSubmitted: o.OnSubmitted,
 		SelectionColor: foundation.Some(ui.NewColor(0x661F5FBF)),
 	})
-	var field widgets.Widget = text
+	// The label goes on the node that EditableText makes, which holds the text, the
+	// focus and the obscured flag; a node of its own beside it would be a second text
+	// field without a name.
+	var field widgets.Widget = widgets.NewSemantics(text, widgets.SemanticsOpts{Label: foundation.Some(f.label), Hint: foundation.Some(o.Hint), ReadOnly: foundation.Some(o.ReadOnly)})
 	if s.controller.Text() == "" && o.Hint != "" {
 		field = widgets.NewStack([]widgets.Widget{
-			widgets.NewIgnorePointer(widgets.NewText(o.Hint, widgets.TextOpts{Style: TextStyle(SizeBody, ui.FontWeightW400, th.Disabled), MaxLines: foundation.Some(1), Overflow: painting.TextOverflowEllipsis})),
-			text,
+			widgets.NewIgnorePointer(widgets.NewExcludeSemantics(widgets.NewText(o.Hint, widgets.TextOpts{Style: TextStyle(SizeBody, ui.FontWeightW400, th.Disabled), MaxLines: foundation.Some(1), Overflow: painting.TextOverflowEllipsis}))),
+			field,
 		}, widgets.StackOpts{Fit: rendering.StackFitPassthrough})
 	}
 	row := []widgets.Widget{widgets.NewExpanded(widgets.NewCenter(field, widgets.CenterOpts{HeightFactor: foundation.Some(1.0)}))}
@@ -144,7 +147,7 @@ func (s *textFieldState) Build(bc widgets.BuildContext) widgets.Widget {
 		border, width = th.Focus, 2.0
 	}
 	box := widgets.NewContainer(widgets.NewRow(row, widgets.RowOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentCenter}), widgets.ContainerOpts{
-		Height:  foundation.Some(ControlHeight),
+		Height:  foundation.Some(Scaled(bc, ControlHeight)),
 		Padding: painting.NewEdgeInsetsSymmetric(0, SpaceM),
 		Decoration: painting.NewBoxDecoration(painting.BoxDecorationOpts{
 			Color:        foundation.Some(th.Surface),
@@ -152,16 +155,9 @@ func (s *textFieldState) Build(bc widgets.BuildContext) widgets.Widget {
 			BorderRadius: painting.NewBorderRadiusCircular(Radius),
 		}),
 	})
-	return widgets.NewSemantics(
-		widgets.NewFocus(box, widgets.FocusOpts{
-			OnFocusChange:    func(has bool) { s.SetState(func() { s.focused = has }) },
-			CanRequestFocus:  foundation.Some(false),
-			SkipTraversal:    foundation.Some(true),
-			ExcludeSemantics: true,
-		}),
-		widgets.SemanticsOpts{
-			Container: true, TextField: foundation.Some(true), Label: foundation.Some(f.label),
-			Obscured: foundation.Some(o.Obscure), ReadOnly: foundation.Some(o.ReadOnly),
-			Focused: foundation.Some(s.focused),
-		})
+	return widgets.NewFocus(box, widgets.FocusOpts{
+		OnFocusChange:   func(has bool) { s.SetState(func() { s.focused = has }) },
+		CanRequestFocus: foundation.Some(false),
+		SkipTraversal:   foundation.Some(true),
+	})
 }

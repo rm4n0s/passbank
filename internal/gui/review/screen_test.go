@@ -866,3 +866,31 @@ func pairWithAttachmentsFor(t *testing.T) (a, b *model.Database) {
 	a, b, _ = pairWithAttachments(t)
 	return a, b
 }
+
+// A very long group path and title are cut with an ellipsis in the row and in the
+// details, and nothing overflows (the tester fails on an overflow), at both text
+// sizes.
+func TestScreenLongNames(t *testing.T) {
+	long := "A very long name that goes on and on and on and never seems to stop"
+	for _, sc := range []struct {
+		name   string
+		factor float64
+	}{{"100", 1}, {"200", 2}} {
+		t.Run(sc.name, func(t *testing.T) {
+			a, b := modeltest.MergePair()
+			for _, db := range []*model.Database{a, b} {
+				bank := db.Root.Groups[1]
+				bank.Name = long + " (group)"
+				bank.Entries[0].Fields[0].Value = secret.New([]byte(long + " (entry)"))
+				for _, f := range bank.Entries[0].Fields[3:4] {
+					f.Value = secret.New([]byte("https://example.com/" + strings.Repeat("path/", 30)))
+				}
+			}
+			h := newHarness(t, kit.LightTheme(), sessionOf(a, b))
+			h.ts.SetPlatformConfiguration(func(c *ui.PlatformConfiguration) { c.TextScaleFactor = sc.factor })
+			h.ts.PumpAndSettle()
+			h.tapRow(Title(h.model().Change(3)))
+			h.ts.MatchesGolden("review-long-names-" + sc.name)
+		})
+	}
+}

@@ -613,3 +613,16 @@ history          2
 - **Manual checks:** none.
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** the step asks to drive the screens "in a real window"; there is no tool that sends input to a Wayland window here (no `wtype` or `ydotool`, and Glutter has no way to inject input into a real window). So the input-driven flow runs on gluttertest's fake platform (the same widgets and the same code), and the real window is checked for its title, size and what it paints. `Compare` and `Write` take no focus while they cannot act.
+
+## 8.7 Accessibility and polish
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-8.7-polish
+- **Summary:** the semantics of the kit were corrected where a screen reader would have met a control without a name or with its name twice: a text field's label is on the node that holds the text (and its hint is a hint), the visible text of buttons, chips, choice buttons, link buttons and list rows no longer adds to their label, the gesture detectors under them add no node of their own, the captions above the controls of the Write screen are not read twice, the two Unlock buttons say which database they unlock, and a row of the table of fields says whether A and B differ and its values, never a protected one. Sizes that hold text grow with the text scale (`kit.Scaled`); a choice with several buttons (`kit.Segmented`) wraps. The Review screen has a compact layout, used above 125 % text scale and in a window under 1000 by 700: the page scrolls with the buttons at the foot fixed. `testutil.SemanticNodes`, `CheckSemantics`, `FindNode` and `FindTextField` read the semantics tree in tests.
+- **Main files:** internal/gui/kit/*.go, internal/gui/review/screen.go and list.go, internal/gui/testutil/semantics.go, internal/gui/open/screen.go.
+- **Tests:** on each screen at 100 % and at 200 % text scale: every node that can be used has a label, no secret (a password typed in a field, the passwords of the fixtures) is in any label, value or hint, the password fields are obscured, the expected names exist (so every action is reachable and named), Compare is disabled until both sides are unlocked; the rows of the table; golden images of the three screens at 200 % and of the Review screen with a very long group path and title at 100 % and 200 %; the tester fails on any layout overflow.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none required (the goldens above hold the images; every changed golden was looked at).
+- **Manual checks:** a pass with a real screen reader (Orca) is added to docs/MANUAL-CHECKS.md: the semantics are tested here, what Orca says is not.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the text scale tested is Glutter's `TextScaleFactor`, which is what a desktop's "large text" setting sets; a window scale of 200 % (`DevicePixelRatio`) only makes everything bigger and changes no layout.

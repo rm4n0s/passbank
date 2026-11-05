@@ -4,7 +4,6 @@ import (
 	"github.com/rm4n0s/glutter/foundation"
 	"github.com/rm4n0s/glutter/gestures"
 	"github.com/rm4n0s/glutter/painting"
-	"github.com/rm4n0s/glutter/rendering"
 	"github.com/rm4n0s/glutter/ui"
 	"github.com/rm4n0s/glutter/widgets"
 )
@@ -48,14 +47,13 @@ func (s *Segmented) Selected() string { return s.selected }
 
 // Build builds the row of segments.
 func (s *Segmented) Build(bc widgets.BuildContext) widgets.Widget {
-	items := make([]widgets.Widget, 0, 2*len(s.segments))
-	for i, seg := range s.segments {
-		if i > 0 {
-			items = append(items, widgets.NewSizedBox(nil, widgets.SizedBoxOpts{Width: foundation.Some(SpaceS)}))
-		}
+	// The segments wrap to a second line when they do not fit, as they do at a large
+	// text size.
+	items := make([]widgets.Widget, 0, len(s.segments))
+	for _, seg := range s.segments {
 		items = append(items, newSegmentView(s.label, seg, seg.Value == s.selected, s.onChanged))
 	}
-	return widgets.NewSemantics(widgets.NewRow(items, widgets.RowOpts{MainAxisSize: rendering.MainAxisSizeMin}),
+	return widgets.NewSemantics(widgets.NewWrap(items, widgets.WrapOpts{Spacing: SpaceS, RunSpacing: SpaceS}),
 		widgets.SemanticsOpts{Container: true, ExplicitChildNodes: true, Label: foundation.Some(s.label)})
 }
 
@@ -103,7 +101,7 @@ func (s *segmentState) Build(bc widgets.BuildContext) widgets.Widget {
 	body := widgets.NewContainer(widgets.NewText(v.segment.Label, widgets.TextOpts{
 		Style: TextStyle(SizeBody, ui.FontWeightW700, fg), MaxLines: foundation.Some(1),
 	}), widgets.ContainerOpts{
-		Height:  foundation.Some(ControlHeight),
+		Height:  foundation.Some(Scaled(bc, ControlHeight)),
 		Padding: painting.NewEdgeInsetsSymmetric(8, SpaceL),
 		Decoration: painting.NewBoxDecoration(painting.BoxDecorationOpts{
 			Color:        foundation.Some(bg),
@@ -111,7 +109,7 @@ func (s *segmentState) Build(bc widgets.BuildContext) widgets.Widget {
 			BorderRadius: painting.NewBorderRadiusCircular(Radius),
 		}),
 	})
-	var w widgets.Widget = widgets.NewGestureDetector(body, widgets.GestureDetectorOpts{OnTap: pick})
+	var w widgets.Widget = widgets.NewGestureDetector(widgets.NewExcludeSemantics(body), widgets.GestureDetectorOpts{OnTap: pick, ExcludeFromSemantics: true})
 	w = widgets.NewMouseRegion(w, widgets.MouseRegionOpts{
 		OnEnter: func(*gestures.PointerEnterEvent) { s.SetState(func() { s.hovered = true }) },
 		OnExit:  func(*gestures.PointerExitEvent) { s.SetState(func() { s.hovered = false }) },

@@ -85,7 +85,7 @@ func (s *linkButtonState) Build(bc widgets.BuildContext) widgets.Widget {
 	body := widgets.NewContainer(widgets.NewText(l.label, widgets.TextOpts{Style: TextStyle(SizeSmall, ui.FontWeightW700, color)}), widgets.ContainerOpts{
 		Padding: painting.NewEdgeInsetsSymmetric(SpaceS, SpaceM), Decoration: decoration,
 	})
-	var w widgets.Widget = widgets.NewGestureDetector(body, widgets.GestureDetectorOpts{OnTap: func() {
+	var w widgets.Widget = widgets.NewGestureDetector(widgets.NewExcludeSemantics(body), widgets.GestureDetectorOpts{ExcludeFromSemantics: true, OnTap: func() {
 		if l.onTap != nil {
 			l.onTap()
 		}

@@ -57,3 +57,14 @@ desktop session, from the project folder:
 Press **Choose…** beside the file of A, check that the dialog shows only `.kdbx` files by default and that
 the file you pick appears in the field. Take a screenshot of the dialog and tell the agent what you saw (it
 goes to `docs/implemented-proof-images/8.2-portal.png`).
+
+## 8.7: the GUI with a screen reader (Orca)
+
+The semantics of every screen are tested (labels, obscured passwords, no secret in any name), but what Orca
+says is not. With Orca running (Super+Alt+S on GNOME): start `scripts/isolated.sh -- go run ./cmd/passbank-gui`,
+and with the keyboard only (Tab, Shift+Tab, Space, Enter) unlock the two fixture databases
+(`internal/cli/testdata/merge/a.kdbx` with the password `merge-pair-a` and `b.kdbx` with `merge-pair-b`),
+compare, choose in the list, open the details of "Banking / My bank" and write a new database to a scratch folder.
+Report any control that Orca reads without a name or twice, and any value that it reads aloud although it
+should be hidden (the password fields must say "password" and read nothing, and the table must never read the
+passwords).

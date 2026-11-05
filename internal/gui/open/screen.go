@@ -271,7 +271,8 @@ func (s *screenState) panelView(bc widgets.BuildContext, i int) widgets.Widget {
 		if src != nil {
 			label = "Unlock again"
 		}
-		children = append(children, widgets.NewRow([]widgets.Widget{kit.NewButton(label, func() { s.unlock(i) }, kit.ButtonOpts{Kind: kit.Primary})}))
+		children = append(children, widgets.NewRow([]widgets.Widget{kit.NewButton(label, func() { s.unlock(i) },
+			kit.ButtonOpts{Kind: kit.Primary, SemanticsLabel: label + " database " + p.name})}))
 	}
 	if p.err != nil {
 		children = append(children, gap(kit.SpaceM), kit.NewBanner(kit.ErrorBanner, message.Of(p.err, filepath.Base(p.path.Text()), message.GUI), ""))

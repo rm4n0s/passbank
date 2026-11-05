@@ -44,6 +44,8 @@ type listState struct {
 	scroll *widgets.ScrollControllerBase
 	focus  *widgets.FocusNode
 	search *widgets.TextEditingController
+	// rowHeight is the height of a row at the current text size.
+	rowHeight float64
 }
 
 func (s *listState) InitState() {
@@ -70,6 +72,7 @@ func (s *listState) changed() {
 func (s *listState) Build(bc widgets.BuildContext) widgets.Widget {
 	th := kit.ThemeOf(bc)
 	m := s.Widget().model
+	s.rowHeight = kit.Scaled(bc, RowHeight)
 	gap := func(h float64) widgets.Widget {
 		return widgets.NewSizedBox(nil, widgets.SizedBoxOpts{Height: foundation.Some(h)})
 	}
@@ -158,7 +161,7 @@ func (s *listState) rows(th kit.Theme) widgets.Widget {
 			}
 			return s.row(th, pos)
 		}, widgets.ListViewOpts{
-			Controller: s.scroll, ItemCount: foundation.Some(m.Len()), ItemExtent: foundation.Some(RowHeight),
+			Controller: s.scroll, ItemCount: foundation.Some(m.Len()), ItemExtent: foundation.Some(s.rowHeight),
 		})
 	}
 	box := widgets.NewContainer(body, widgets.ContainerOpts{
@@ -199,9 +202,9 @@ func (s *listState) row(th kit.Theme, pos int) widgets.Widget {
 	}
 	cells := widgets.NewRow([]widgets.Widget{
 		widgets.NewSizedBox(one(kit.TextStyle(kit.SizeSmall, ui.FontWeightW700, kindColor(th, c.Kind)), KindLabel(c.Kind)),
-			widgets.SizedBoxOpts{Width: foundation.Some(104.0)}),
+			widgets.SizedBoxOpts{Width: foundation.Some(s.col(104))}),
 		widgets.NewExpanded(one(th.Body(), Title(c))),
-		widgets.NewSizedBox(one(choiceStyle, ChoiceLabel(choice)), widgets.SizedBoxOpts{Width: foundation.Some(80.0)}),
+		widgets.NewSizedBox(one(choiceStyle, ChoiceLabel(choice)), widgets.SizedBoxOpts{Width: foundation.Some(s.col(80))}),
 	}, widgets.RowOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentCenter})
 
 	state := "default"
@@ -214,8 +217,11 @@ func (s *listState) row(th kit.Theme, pos int) widgets.Widget {
 		s.focus.RequestFocus()
 		s.changed()
 	})
-	return widgets.NewSizedBox(row, widgets.SizedBoxOpts{Height: foundation.Some(RowHeight)})
+	return widgets.NewSizedBox(row, widgets.SizedBoxOpts{Height: foundation.Some(s.rowHeight)})
 }
+
+// col is the width of a column of a row at the current text size.
+func (s *listState) col(w float64) float64 { return w * s.rowHeight / RowHeight }
 
 // kindColor is the color of a kind's name.
 func kindColor(th kit.Theme, k diff.Kind) ui.Color {
@@ -298,12 +304,13 @@ func (s *listState) scrollToCursor() {
 	if !p.HasViewportDimension() {
 		return
 	}
-	top := float64(m.Cursor()) * RowHeight
+	h := s.rowHeight
+	top := float64(m.Cursor()) * h
 	switch {
 	case top < p.Pixels():
 		s.scroll.JumpTo(top)
-	case top+RowHeight > p.Pixels()+p.ViewportDimension():
-		s.scroll.JumpTo(top + RowHeight - p.ViewportDimension())
+	case top+h > p.Pixels()+p.ViewportDimension():
+		s.scroll.JumpTo(top + h - p.ViewportDimension())
 	}
 }
 
