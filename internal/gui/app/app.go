@@ -6,11 +6,14 @@ import (
 	"github.com/rm4n0s/errors"
 	"github.com/rm4n0s/glutter/animation"
 	"github.com/rm4n0s/glutter/foundation"
-	"github.com/rm4n0s/glutter/painting"
+	"github.com/rm4n0s/glutter/rendering"
 	"github.com/rm4n0s/glutter/ui"
 	"github.com/rm4n0s/glutter/widgets"
 
+	"github.com/rm4n0s/passbank/internal/gui/kit"
 	"github.com/rm4n0s/passbank/internal/gui/kit/fonts"
+	"github.com/rm4n0s/passbank/internal/gui/open"
+	"github.com/rm4n0s/passbank/internal/gui/session"
 )
 
 // The identity of the application.
@@ -20,12 +23,6 @@ const (
 	AppID = "dev.rm4n0s.Passbank"
 	// Title is the title of the window.
 	Title = "Passbank"
-)
-
-// Colors of the first window; step 8.1 replaces them with the theme of the kit.
-var (
-	background   = ui.NewColor(0xFFFAFAFA)
-	onBackground = ui.NewColor(0xFF1B1B1F)
 )
 
 // Run opens the window and runs the application until the window is closed or
@@ -46,48 +43,83 @@ func Run(ctx context.Context) error {
 	return nil
 }
 
-// App is the root widget: a WidgetsApp, without Material, whose home is the
-// screen the user is on.
+// App is the root widget: a WidgetsApp, without Material, whose home is the screen
+// the user is on. It owns the session and wipes it when it goes.
 type App struct {
-	widgets.StatelessWidget
+	widgets.StatefulWidget
 }
 
 // NewApp returns the root widget of the application.
 func NewApp(opts ...widgets.WidgetOpts) *App {
-	return &App{StatelessWidget: widgets.NewStatelessWidgetBase(opts...)}
+	return &App{StatefulWidget: widgets.NewStatefulWidgetBase(opts...)}
 }
 
-// Build builds the WidgetsApp with one route, whose page is the home.
-func (a *App) Build(bc widgets.BuildContext) widgets.Widget {
-	return widgets.NewWidgetsApp(background, widgets.WidgetsAppOpts{
+// CreateState makes the state of the application.
+func (a *App) CreateState() widgets.State { return &appState{} }
+
+// screen is the screen the user is on.
+type screen int
+
+const (
+	screenOpen screen = iota
+	screenReview
+	screenWrite
+)
+
+type appState struct {
+	widgets.StateOf[*App]
+	sess   *session.Session
+	screen screen
+}
+
+func (s *appState) InitState() { s.sess = session.New() }
+
+// Dispose drops every unlocked database and its secrets (SPEC §13: closing the window).
+func (s *appState) Dispose() { s.sess.Wipe() }
+
+// goTo shows another screen.
+func (s *appState) goTo(to screen) { s.SetState(func() { s.screen = to }) }
+
+// Build builds the WidgetsApp with one route, whose page is the current screen.
+func (s *appState) Build(bc widgets.BuildContext) widgets.Widget {
+	return widgets.NewWidgetsApp(kit.LightTheme().Background, widgets.WidgetsAppOpts{
 		Title: Title,
 		// The window is a proof image: it has no debug ribbon.
 		DebugShowCheckedModeBanner: foundation.Some(false),
-		TextStyle:                  textStyle(16, ui.FontWeightW400),
+		TextStyle:                  kit.LightTheme().Body(),
 		OnGenerateRoute: func(settings widgets.RouteSettings) widgets.Route {
 			return widgets.NewPageRouteBuilder(
-				func(widgets.BuildContext, animation.Animation[float64], animation.Animation[float64]) widgets.Widget {
-					return home()
+				func(bc widgets.BuildContext, _, _ animation.Animation[float64]) widgets.Widget {
+					return s.page(bc)
 				},
 				widgets.PageRouteBuilderOpts{PageRouteOpts: widgets.PageRouteOpts{RouteOpts: widgets.RouteOpts{Settings: settings}}})
 		},
 	})
 }
 
-// home is the page shown until the Open screen exists (step 8.2): the name of
-// the application, centered. WidgetsApp paints no background of its own (its
-// color is only the primary color that the system sees), so the page paints it.
-func home() widgets.Widget {
-	return widgets.NewColoredBox(background,
-		widgets.NewCenter(widgets.NewText(Title, widgets.TextOpts{Style: textStyle(40, ui.FontWeightW700)})))
+// page is the current screen in the theme of the desktop.
+func (s *appState) page(bc widgets.BuildContext) widgets.Widget {
+	theme := kit.LightTheme()
+	if widgets.MediaQueryPlatformBrightnessOf(bc) == ui.BrightnessDark {
+		theme = kit.DarkTheme()
+	}
+	var body widgets.Widget
+	switch s.screen {
+	case screenReview:
+		body = placeholder("Review", func() { s.goTo(screenWrite) }, func() { s.sess.Wipe(); s.goTo(screenOpen) })
+	case screenWrite:
+		body = placeholder("Write", nil, func() { s.goTo(screenReview) })
+	default:
+		body = open.NewScreen(s.sess, func() { s.goTo(screenReview) })
+	}
+	return kit.NewRoot(theme, body)
 }
 
-// textStyle is the style of the interface text.
-func textStyle(size float64, weight ui.FontWeight) *painting.TextStyle {
-	return painting.NewTextStyle(painting.TextStyleOpts{
-		FontFamily: fonts.Sans,
-		FontSize:   foundation.Some(size),
-		Color:      foundation.Some(onBackground),
-		FontWeight: weight,
-	})
+// placeholder stands for a screen that a later step builds.
+func placeholder(name string, next, back func()) widgets.Widget {
+	return widgets.NewCenter(widgets.NewColumn([]widgets.Widget{
+		widgets.NewText(name),
+		kit.NewButton("Back", back),
+		kit.NewButton("Next", next),
+	}, widgets.ColumnOpts{MainAxisSize: rendering.MainAxisSizeMin}))
 }

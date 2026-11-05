@@ -46,3 +46,14 @@ passwords are `merge-pair-a` for A and `merge-pair-b` for B; the output goes to 
 Type the two passwords, then Enter on each change (nine of them), `v` on the "My bank" change to see the
 passwords, and `y` at the end. Check that `go run ./cmd/passbank info /tmp/pb-check/out.kdbx` (password
 `merge-pair-a`) shows 6 entries. Try `q` once and check that no file is written. Tell the agent what you saw.
+
+## 8.2: the file dialog of the desktop
+
+The Open screen's **Choose…** button opens the portal's file dialog, which a test cannot open. In a real
+desktop session, from the project folder:
+
+    scripts/isolated.sh -- go run ./cmd/passbank-gui
+
+Press **Choose…** beside the file of A, check that the dialog shows only `.kdbx` files by default and that
+the file you pick appears in the field. Take a screenshot of the dialog and tell the agent what you saw (it
+goes to `docs/implemented-proof-images/8.2-portal.png`).

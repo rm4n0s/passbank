@@ -547,3 +547,16 @@ history          2
 - **Glutter issues:** none yet (a gap in the real window may show in 8.2).
 - **Deviations and follow-ups:** the theme is chosen by the application; following the desktop's light/dark preference is left to 8.6 if Glutter exposes it (`MediaQuery` platform brightness). `Progress` is not animated: it shows a partly filled bar and its caption when the amount is unknown (an animation would keep `PumpAndSettle` from settling in every screen test).
 
+## 8.2 The Open screen
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-8.2-open-screen
+- **Summary:** the Open screen (`internal/gui/open`) is the home of the application: two panels, A and B, each with a file field (Choose… opens the portal dialog through `desktop.OpenFiles` with a `*.kdbx` filter, off the UI thread; a file dropped on the panel sets the path), a password field, a key-file field, **Unlock** (`session.Unlock` runs off the UI thread with a `ctx` that the **Cancel** button ends; the password is wiped from the field once it is in the session; a failure leaves it for another try), the summary of an unlocked file (version, cipher, key derivation, groups, entries, attachments, history items), the error of SPEC §15 in a banner, **Swap A and B** and **Compare** (enabled when both are unlocked). Editing the path of an unlocked side locks it again. `internal/gui/session` holds the unlocked databases, the plan and the wiping; `internal/core/message` holds the messages of SPEC §15 for both frontends (moved from the CLI; the GUI words the three that tell the user what to do differently). The application follows the desktop's light or dark preference, owns the session and wipes it when going back to Open and when the window closes.
+- **Main files:** internal/gui/open/screen.go, internal/gui/session/session.go, internal/gui/app/app.go, internal/core/message/message.go.
+- **Tests:** unlocking with a password, with a key file; five errors with their messages; Compare enabled only with both sides; Swap; the file dialog (answered, cancelled, no portal) with the fake desktop; editing the path locks the side; a file dropped on a panel; `pathOfURI`; Cancel while unlocking; goldens in both themes; the session (unlock routes, swapping, replacing wipes, `Wipe` zeroes the entries' and the credentials' bytes); the app (the Open screen is home, going back to Open and closing the window wipe the secrets); every message of the message package for both audiences.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method A, `go test ./internal/gui/open -run TestGolden -proof` wrote `docs/implemented-proof-images/8.2-open.png` (A unlocked, B with a wrong password). Method D: pending, see docs/MANUAL-CHECKS.md.
+- **Manual checks:** pending, see docs/MANUAL-CHECKS.md (the portal dialog).
+- **Glutter issues:** none. (`FakeDesktop()` makes a new fake on every call, so a test keeps the one it got; that is how it is documented to work.)
+- **Deviations and follow-ups:** the GUI shows the file name, not the whole path, in its error messages. Review and Write are placeholders in the app until 8.3 to 8.5.
+

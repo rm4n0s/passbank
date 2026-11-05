@@ -81,6 +81,31 @@ func (s *textFieldState) InitState() {
 	s.listener = s.controller.AddListener(func() { s.SetState(func() {}) })
 }
 
+// DidUpdateWidget follows a controller or a focus node that the caller replaced.
+func (s *textFieldState) DidUpdateWidget(old *TextField) {
+	o := s.Widget().opts
+	if o.Controller != old.opts.Controller {
+		s.controller.RemoveListener(s.listener)
+		if s.ownController {
+			s.controller.Dispose()
+		}
+		s.controller, s.ownController = o.Controller, o.Controller == nil
+		if s.controller == nil {
+			s.controller = widgets.NewTextEditingController()
+		}
+		s.listener = s.controller.AddListener(func() { s.SetState(func() {}) })
+	}
+	if o.FocusNode != old.opts.FocusNode {
+		if s.ownFocus {
+			s.focus.Dispose()
+		}
+		s.focus, s.ownFocus = o.FocusNode, o.FocusNode == nil
+		if s.focus == nil {
+			s.focus = widgets.NewFocusNode()
+		}
+	}
+}
+
 func (s *textFieldState) Dispose() {
 	s.controller.RemoveListener(s.listener)
 	if s.ownController {

@@ -447,8 +447,10 @@ internal/core/diff/        matching and comparison -> changes (sections 7, 8)
 internal/core/plan/        choices, rules, plan file (sections 9, 11)
 internal/core/merge/       applying a plan -> result model (section 10)
 internal/core/output/      safe write, same-file checks, read-back verification (section 5)
+internal/core/message/     the one-line messages of section 15, for the CLI and the GUI
 internal/cli/              CLI frontend
 internal/gui/app/          the application widget and screen flow
+internal/gui/session/      the state the screens share: the unlocked databases, the plan, the output settings
 internal/gui/open/         Open screen
 internal/gui/review/       Review screen
 internal/gui/write/        Write screen

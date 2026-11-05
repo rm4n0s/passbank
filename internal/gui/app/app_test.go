@@ -3,19 +3,25 @@ package app
 import (
 	"bytes"
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/rm4n0s/glutter/gluttertest"
+	"github.com/rm4n0s/glutter/widgets"
+
+	"github.com/rm4n0s/passbank/internal/core/model"
+	"github.com/rm4n0s/passbank/internal/core/secret"
+	"github.com/rm4n0s/passbank/internal/gui/session"
 
 	"github.com/rm4n0s/passbank/internal/gui/testutil"
 )
 
-func TestHomeShowsTheName(t *testing.T) {
+func TestHomeIsTheOpenScreen(t *testing.T) {
 	ts := testutil.New(t)
 	ts.PumpWidget(NewApp())
 	ts.PumpAndSettle()
-	if err := gluttertest.FindsOneWidget(ts, gluttertest.ByText(Title)); err != nil {
+	if err := gluttertest.FindsOneWidget(ts, gluttertest.ByText("Merge two KeePass databases")); err != nil {
 		t.Error(err)
 	}
 }
@@ -62,4 +68,72 @@ func TestRunFailsWithoutADisplay(t *testing.T) {
 		t.Fatal("Run must fail when there is no display")
 	}
 	assertRoute(t, err, "Run.AppRunFailed")
+}
+
+func unlockFixture(t *testing.T, name string) *session.Source {
+	t.Helper()
+	path, err := filepath.Abs(filepath.Join("..", "..", "core", "kdbx", "testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	src, err := session.Unlock(context.Background(), path, secret.New([]byte("fixture-rich")), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return src
+}
+
+func TestCompareThenBackWipesTheSession(t *testing.T) {
+	ts := testutil.New(t)
+	ts.PumpWidget(NewApp())
+	ts.PumpAndSettle()
+	st := gluttertest.StateOf[*appState](ts, gluttertest.ByType[*App]())
+	a, b := unlockFixture(t, "k4-rich.kdbx"), unlockFixture(t, "k31-rich.kdbx")
+	st.SetState(func() { st.sess.SetA(a); st.sess.SetB(b) })
+	ts.PumpAndSettle()
+	ts.Tap(gluttertest.ByText("Compare"))
+	ts.PumpAndSettle()
+	if st.screen != screenReview {
+		t.Fatalf("screen = %v, want the Review screen", st.screen)
+	}
+	password := firstPassword(a)
+	ts.Tap(gluttertest.ByText("Back"))
+	ts.PumpAndSettle()
+	if st.screen != screenOpen || st.sess.A != nil || st.sess.B != nil {
+		t.Errorf("going back to Open left the session: screen %v, A %v, B %v", st.screen, st.sess.A != nil, st.sess.B != nil)
+	}
+	for _, c := range password.Reveal() {
+		if c != 0 {
+			t.Fatal("a password of A was not wiped when going back to Open")
+		}
+	}
+}
+
+func TestClosingTheWindowWipesTheSession(t *testing.T) {
+	ts := testutil.New(t)
+	ts.PumpWidget(NewApp())
+	ts.PumpAndSettle()
+	st := gluttertest.StateOf[*appState](ts, gluttertest.ByType[*App]())
+	a := unlockFixture(t, "k4-rich.kdbx")
+	st.SetState(func() { st.sess.SetA(a) })
+	password := firstPassword(a)
+	ts.PumpWidget(widgets.NewSizedBox(nil)) // the app leaves the tree, as when the window closes
+	ts.PumpAndSettle()
+	for _, c := range password.Reveal() {
+		if c != 0 {
+			t.Fatal("a password of A was not wiped when the app went")
+		}
+	}
+}
+
+func firstPassword(src *session.Source) secret.Bytes {
+	var pw secret.Bytes
+	src.DB.WalkEntries(func(_ *model.Group, e *model.Entry) bool {
+		if f, ok := e.Field(model.FieldPassword); ok && f.Value.Len() > 0 {
+			pw = f.Value
+			return false
+		}
+		return true
+	})
+	return pw
 }
