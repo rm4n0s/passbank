@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"os"
 
 	"github.com/rm4n0s/errors"
 
@@ -24,9 +23,6 @@ const mergeUsage = "usage: passbank merge A B -o OUT [--plan PLAN | --prefer new
 	"                     [--keyfile-a PATH] [--password-file-a PATH] [--no-password-a]\n" +
 	"                     [--keyfile-b PATH] [--password-file-b PATH] [--no-password-b]\n" +
 	"                     [--keyfile-out PATH] [--password-file-out PATH] [--no-password-out]"
-
-// maxPlanFile is the largest plan file merge reads.
-const maxPlanFile = 256 << 20
 
 // mergeOptions are the parsed options of `passbank merge`.
 type mergeOptions struct {
@@ -206,20 +202,7 @@ func choicesFor(ctx context.Context, o *mergeOptions, a, b *input, changes []dif
 		}
 		return p, nil
 	}
-	return readPlanFile(ctx, o.planPath, a.planInput(), b.planInput(), changes)
-}
-
-// readPlanFile reads a plan file.
-func readPlanFile(ctx context.Context, path string, a, b plan.Input, changes []diff.Change) (*plan.Plan, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, errors.NewErr("ReadCancelled", err)
-	}
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, errors.NewErr("PlanFileReadFailed", err).SetMetadata("path", path)
-	}
-	defer func() { _ = f.Close() }() // the file was only read
-	return plan.Read(io.LimitReader(f, maxPlanFile), a, b, changes)
+	return plan.ReadFile(ctx, o.planPath, a.planInput(), b.planInput(), changes)
 }
 
 // setSettings sets the choice of the settings change to the side given.

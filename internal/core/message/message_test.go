@@ -38,6 +38,7 @@ func TestOf(t *testing.T) {
 			`the group "Games" is dropped, but "Forum" in it is kept (2 items in dropped groups are kept); drop them too or keep the group`, ""},
 		{"cycle", errors.New("MergeGroupCycle", "x", "group", "g"), "the choices would put the group g inside itself; take the place of one of the groups from A", ""},
 		{"output exists", errors.New("OutputExists", "x"), "a.kdbx exists; use --force to replace it", "a.kdbx exists; choose another name, or confirm that it is replaced in the file dialog"},
+		{"plan file exists", errors.New("PlanFileExists", "x"), "a.kdbx exists; use --force to replace it", "a.kdbx exists; confirm that it is replaced in the file dialog"},
 		{"output is input", errors.New("OutputIsInput", "x"), "the output must be a new file, not one of the inputs", ""},
 		{"loses data", errors.New("OutputVersionLosesData", "x", "version", "3.1", "count", 2, "losses", "GroupTags Root/Email"),
 			"KDBX 3.1 cannot store everything in the result (2 items would lose data); choose --format 4 or accept the loss with --allow-loss: GroupTags Root/Email",

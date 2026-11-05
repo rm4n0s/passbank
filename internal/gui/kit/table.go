@@ -111,8 +111,8 @@ func (s *fieldTableState) Build(bc widgets.BuildContext) widgets.Widget {
 		}
 		rows = append(rows, widgets.NewSemantics(widgets.NewContainer(widgets.NewRow([]widgets.Widget{
 			widgets.NewSizedBox(cell(r.Name, th.Bold()), widgets.SizedBoxOpts{Width: foundation.Some(130.0)}),
-			widgets.NewExpanded(widgets.NewText(show(r.A, r.MissingA), widgets.TextOpts{Style: valueStyle})),
-			widgets.NewExpanded(widgets.NewText(show(r.B, r.MissingB), widgets.TextOpts{Style: valueStyle})),
+			widgets.NewExpanded(widgets.NewPadding(painting.NewEdgeInsetsFromLTRB(0, 0, SpaceM, 0), widgets.NewText(show(r.A, r.MissingA), widgets.TextOpts{Style: valueStyle}))),
+			widgets.NewExpanded(widgets.NewPadding(painting.NewEdgeInsetsFromLTRB(0, 0, SpaceM, 0), widgets.NewText(show(r.B, r.MissingB), widgets.TextOpts{Style: valueStyle}))),
 			toggle,
 		}, widgets.RowOpts{CrossAxisAlignment: rendering.CrossAxisAlignmentStart}), widgets.ContainerOpts{
 			Padding: pad,

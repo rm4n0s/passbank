@@ -16,7 +16,6 @@ import (
 	"github.com/rm4n0s/passbank/internal/core/kdbx/crypto"
 	"github.com/rm4n0s/passbank/internal/core/model"
 	"github.com/rm4n0s/passbank/internal/core/model/modeltest"
-	"github.com/rm4n0s/passbank/internal/core/plan"
 	"github.com/rm4n0s/passbank/internal/core/secret"
 )
 
@@ -666,24 +665,11 @@ func TestMergeGroupDropConflict(t *testing.T) {
 }
 
 func TestMergeRoutes(t *testing.T) {
-	// The reader of plan files fails with a route.
-	_, err := readPlanFile(context.Background(), filepath.Join(t.TempDir(), "missing"), plan0(), plan0(), nil)
-	appErr, ok := errors.FromError(err)
-	if !ok || !appErr.HasRoute("readPlanFile.PlanFileReadFailed") {
-		t.Errorf("err = %v", err)
-	}
-	_, err = readPlanFile(cancelled(), "x", plan0(), plan0(), nil)
-	appErr, ok = errors.FromError(err)
-	if !ok || !appErr.HasRoute("readPlanFile.ReadCancelled") {
-		t.Errorf("err = %v", err)
-	}
 	// Differing passwords: the route.
 	c := &credentialOptions{confirm: true}
-	_, err = c.load(context.Background(), env{term: &differingTerminal{}}, "out")
-	appErr, ok = errors.FromError(err)
+	_, err := c.load(context.Background(), env{term: &differingTerminal{}}, "out")
+	appErr, ok := errors.FromError(err)
 	if !ok || !appErr.HasRoute("readNewPassword.PasswordsDoNotMatch") {
 		t.Errorf("err = %v", err)
 	}
 }
-
-func plan0() plan.Input { return plan.Input{} }

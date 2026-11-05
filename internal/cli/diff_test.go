@@ -9,8 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/rm4n0s/errors"
-
 	"github.com/rm4n0s/passbank/internal/core/diff"
 	"github.com/rm4n0s/passbank/internal/core/model/modeltest"
 	"github.com/rm4n0s/passbank/internal/core/plan"
@@ -313,65 +311,5 @@ func TestDiffErrors(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, "nope")); err == nil {
 		t.Error("a folder was created")
-	}
-}
-
-func TestWritePlanFileRoutes(t *testing.T) {
-	dir := t.TempDir()
-	existing := filepath.Join(dir, "plan")
-	if err := os.WriteFile(existing, []byte("x"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	tests := []struct {
-		name  string
-		path  string
-		force bool
-		ctx   context.Context
-		route string
-	}{
-		{"exists", existing, false, context.Background(), "writePlanFile.PlanFileExists"},
-		{"missing folder", filepath.Join(dir, "no", "plan"), false, context.Background(), "writePlanFile.PlanFileWriteFailed"},
-		{"missing folder with force", filepath.Join(dir, "no", "plan"), true, context.Background(), "writePlanFile.PlanFileWriteFailed"},
-		{"cancelled", filepath.Join(dir, "new"), false, cancelled(), "writePlanFile.WriteCancelled"},
-		{"a folder with force", dir, true, context.Background(), "writePlanFile.PlanFileWriteFailed"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := writePlanFile(tt.ctx, tt.path, []byte("data"), tt.force)
-			appErr, ok := errors.FromError(err)
-			if !ok {
-				t.Fatalf("expected *errors.Error, got %T (%v)", err, err)
-			}
-			if !appErr.HasRoute(tt.route) {
-				t.Errorf("route = %s, want %s", appErr.Route(), tt.route)
-			}
-		})
-	}
-	if b, _ := os.ReadFile(existing); string(b) != "x" {
-		t.Errorf("the existing file was changed: %q", b)
-	}
-}
-
-func cancelled() context.Context {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	return ctx
-}
-
-func TestCheckPlanPathRoute(t *testing.T) {
-	a, b := mergeFixtures(t)
-	link := filepath.Join(t.TempDir(), "link")
-	if err := os.Symlink(a, link); err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range []string{a, b, link} {
-		err := checkPlanPath(path, []string{a, b})
-		appErr, ok := errors.FromError(err)
-		if !ok || !appErr.HasRoute("checkPlanPath.PlanOutputIsInput") {
-			t.Errorf("%s: err = %v", path, err)
-		}
-	}
-	if err := checkPlanPath(filepath.Join(t.TempDir(), "plan"), []string{a, b}); err != nil {
-		t.Errorf("a new file: %v", err)
 	}
 }

@@ -80,6 +80,11 @@ func of(e *errors.Error, file string, who Audience) string {
 			return fmt.Sprintf("%s exists; choose another name, or confirm that it is replaced in the file dialog", file)
 		}
 		return fmt.Sprintf("%s exists; use --force to replace it", file)
+	case "PlanFileExists":
+		if who == GUI {
+			return fmt.Sprintf("%s exists; confirm that it is replaced in the file dialog", file)
+		}
+		return fmt.Sprintf("%s exists; use --force to replace it", file)
 	case "OutputIsInput":
 		return "the output must be a new file, not one of the inputs"
 	case "OutputVersionLosesData":

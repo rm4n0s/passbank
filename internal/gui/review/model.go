@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/rm4n0s/passbank/internal/core/diff"
+	"github.com/rm4n0s/passbank/internal/core/merge"
 	"github.com/rm4n0s/passbank/internal/core/plan"
 )
 
@@ -298,6 +299,84 @@ func (m *Model) Choose(a Action) Result {
 	}
 	m.afterChange()
 	return r
+}
+
+// CanChoose says whether the choice can be given to at least one selected row: the
+// choice buttons are enabled by it.
+func (m *Model) CanChoose(c plan.Choice) bool {
+	for i := range m.selected {
+		if plan.IsAllowed(m.plan.Changes[i].Kind, c) {
+			return true
+		}
+	}
+	return false
+}
+
+// ChooseValue gives the choice to every selected row whose kind allows it, like a
+// click on a choice button; the other rows are skipped.
+func (m *Model) ChooseValue(c plan.Choice) Result {
+	var r Result
+	for _, pos := range m.Selected() {
+		i := m.visible[pos]
+		if !plan.IsAllowed(m.plan.Changes[i].Kind, c) {
+			r.Skipped++
+			continue
+		}
+		m.set(i, c)
+		r.Set++
+	}
+	m.afterChange()
+	return r
+}
+
+// GroupConflict is a group that the plan drops although it keeps items in it
+// (PlanGroupNotEmpty).
+type GroupConflict struct {
+	// Group is the index of the change that drops the group, and Items the indexes of
+	// the changes of the items that are kept in it.
+	Group int
+	Items []int
+}
+
+// GroupConflicts lists the dropped groups that still hold kept items, in the order
+// of the changes.
+func (m *Model) GroupConflicts() []GroupConflict {
+	var out []GroupConflict
+	at := map[int]int{}
+	for _, c := range merge.Conflicts(m.plan) {
+		k, ok := at[c.Group]
+		if !ok {
+			k = len(out)
+			at[c.Group] = k
+			out = append(out, GroupConflict{Group: c.Group})
+		}
+		out[k].Items = append(out[k].Items, c.Item)
+	}
+	return out
+}
+
+// DropEverythingIn drops every item that the plan keeps in the dropped group of
+// change group, with the groups among them and what these hold, so that the plan can
+// be applied. It returns how many changes it dropped.
+func (m *Model) DropEverythingIn(group int) int {
+	dropped := map[int]bool{group: true}
+	n := 0
+	for progressed := true; progressed; {
+		progressed = false
+		for _, c := range merge.Conflicts(m.plan) {
+			if !dropped[c.Group] || !m.plan.Set(c.Item, plan.Drop) {
+				continue
+			}
+			m.markDecided(c.Item)
+			n++
+			progressed = true
+			if m.plan.Changes[c.Item].Item == diff.ItemGroup {
+				dropped[c.Item] = true
+			}
+		}
+	}
+	m.afterChange()
+	return n
 }
 
 // Set gives the change at index the choice, if its kind allows it. It reports

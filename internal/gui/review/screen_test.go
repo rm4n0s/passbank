@@ -1,7 +1,10 @@
 package review
 
 import (
+	"os"
+	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,9 +14,11 @@ import (
 	"github.com/rm4n0s/glutter/widgets"
 
 	"github.com/rm4n0s/passbank/internal/core/diff"
+	"github.com/rm4n0s/passbank/internal/core/merge"
 	"github.com/rm4n0s/passbank/internal/core/model"
 	"github.com/rm4n0s/passbank/internal/core/model/modeltest"
 	"github.com/rm4n0s/passbank/internal/core/plan"
+	"github.com/rm4n0s/passbank/internal/core/secret"
 	"github.com/rm4n0s/passbank/internal/gui/kit"
 	"github.com/rm4n0s/passbank/internal/gui/session"
 	"github.com/rm4n0s/passbank/internal/gui/testutil"
@@ -65,9 +70,16 @@ func (h *harness) state() *screenState {
 
 func (h *harness) model() *Model { return h.state().Model() }
 
+// tapRow taps the row of the list with the text, or else whatever has the text (a
+// chip, a button). The details repeat the title of the selected row, so the list is
+// searched first.
 func (h *harness) tapRow(text string) {
 	h.t.Helper()
-	h.ts.Tap(gluttertest.ByText(text))
+	f := gluttertest.Descendant(gluttertest.ByType[*kit.ListRow](), gluttertest.ByText(text))
+	if !h.ts.Exists(f) {
+		f = gluttertest.ByText(text)
+	}
+	h.ts.Tap(f)
 	h.ts.PumpAndSettle()
 }
 
@@ -133,8 +145,10 @@ func TestScreenSelectionByMouse(t *testing.T) {
 	if got := h.selected(); !slices.Equal(got, []int{3}) {
 		t.Fatalf("a click selected %v", got)
 	}
-	if !h.ts.Exists(gluttertest.ByText("Differs in")) || !h.ts.Exists(gluttertest.ByText("password, url")) {
-		t.Error("the details do not show what differs")
+	for _, want := range []string{"https://bank.example.com", "https://bank.example.org", kit.Masked} {
+		if !h.ts.Exists(gluttertest.ByText(want)) {
+			t.Errorf("the details do not show %q", want)
+		}
 	}
 
 	h.ts.SendKeyDownEvent(services.LogicalKeyboardKeyShiftLeft)
@@ -151,7 +165,7 @@ func TestScreenSelectionByMouse(t *testing.T) {
 	if got := h.selected(); !slices.Equal(got, []int{0, 3, 5}) {
 		t.Errorf("Ctrl+click selected %v, want 0, 3, 5", got)
 	}
-	if !h.ts.Exists(gluttertest.ByText("3 changes")) {
+	if !h.ts.Exists(gluttertest.ByText("Only in A; 3 changes are selected, the buttons set them all")) {
 		t.Error("the details do not say that 3 are selected")
 	}
 }
@@ -445,4 +459,410 @@ func TestScreenGolden(t *testing.T) {
 			}
 		})
 	}
+}
+
+// button finds the button with the label.
+func (h *harness) button(label string) *kit.Button {
+	h.t.Helper()
+	for _, e := range h.ts.Elements(gluttertest.ByType[*kit.Button]()) {
+		if b := e.Widget().(*kit.Button); b.Label() == label {
+			return b
+		}
+	}
+	h.t.Fatalf("no button %q", label)
+	return nil
+}
+
+func (h *harness) waitFor(what string, cond func() bool) {
+	h.t.Helper()
+	h.fd.WaitFor(what, func() bool {
+		h.ts.PumpAndSettle()
+		return cond()
+	})
+}
+
+func TestScreenRevealResetsWhenTheSelectionChanges(t *testing.T) {
+	a, b := modeltest.MergePair()
+	h := newHarness(t, kit.LightTheme(), sessionOf(a, b))
+	h.tapRow("Banking / My bank")
+	if h.ts.Exists(gluttertest.ByText("bank-password-a")) || h.ts.Exists(gluttertest.ByText("bank-password-b")) {
+		t.Fatal("the passwords are shown before anyone asked")
+	}
+	if !h.ts.Exists(gluttertest.ByText(kit.Masked)) {
+		t.Fatal("the passwords are not masked")
+	}
+	h.ts.Tap(gluttertest.ByText("Show"))
+	h.ts.PumpAndSettle()
+	if !h.ts.Exists(gluttertest.ByText("bank-password-a")) || !h.ts.Exists(gluttertest.ByText("bank-password-b")) {
+		t.Fatal("Show did not reveal the passwords")
+	}
+	h.tapRow("Shopping / Store")
+	if h.ts.Exists(gluttertest.ByText("store-password")) {
+		t.Error("the password of the next change was revealed")
+	}
+	h.tapRow("Banking / My bank")
+	if h.ts.Exists(gluttertest.ByText("bank-password-a")) {
+		t.Error("the reveal came back with the selection")
+	}
+	// A choice made on the same change keeps the reveal.
+	h.ts.Tap(gluttertest.ByText("Show"))
+	h.ts.PumpAndSettle()
+	h.key(services.LogicalKeyboardKeyKeyA)
+	if !h.ts.Exists(gluttertest.ByText("bank-password-a")) {
+		t.Error("choosing hid the password again")
+	}
+}
+
+func TestScreenChoiceButtons(t *testing.T) {
+	a, b := modeltest.MergePair()
+	h := newHarness(t, kit.LightTheme(), sessionOf(a, b))
+	enabled := func() map[string]bool {
+		out := map[string]bool{}
+		for _, label := range []string{"Take A", "Take B", "Keep both", "Keep", "Drop"} {
+			out[label] = h.segmentEnabled(label)
+		}
+		return out
+	}
+	tests := []struct {
+		row  string
+		want map[string]bool
+	}{
+		{"Email / Work mail", map[string]bool{"Take A": false, "Take B": false, "Keep both": false, "Keep": true, "Drop": true}},
+		{"Banking / My bank", map[string]bool{"Take A": true, "Take B": true, "Keep both": true, "Keep": false, "Drop": true}},
+		{"Shopping (group)", map[string]bool{"Take A": true, "Take B": true, "Keep both": false, "Keep": false, "Drop": false}},
+		{"Database settings", map[string]bool{"Take A": true, "Take B": true, "Keep both": false, "Keep": false, "Drop": false}},
+		{"Social / Old account", map[string]bool{"Take A": false, "Take B": false, "Keep both": false, "Keep": true, "Drop": true}},
+	}
+	for _, tt := range tests {
+		h.tapRow(tt.row)
+		got := enabled()
+		for label, want := range tt.want {
+			if got[label] != want {
+				t.Errorf("%s: button %q enabled = %v, want %v", tt.row, label, got[label], want)
+			}
+		}
+	}
+
+	h.tapRow("Banking / My bank")
+	h.pressChoice("Take B")
+	if h.choice(3) != plan.TakeB || !h.sess.Decided[3] {
+		t.Errorf("the Take B button gave %q", h.choice(3))
+	}
+	h.pressChoice("Keep both")
+	if h.choice(3) != plan.Both {
+		t.Errorf("the Keep both button gave %q", h.choice(3))
+	}
+	// A disabled button does nothing.
+	h.pressChoice("Keep")
+	if h.choice(3) != plan.Both {
+		t.Errorf("a disabled button set %q", h.choice(3))
+	}
+	// With several rows selected, a button sets those that allow it.
+	h.tapRow("Banking / My bank")
+	h.ts.SendKeyDownEvent(services.LogicalKeyboardKeyShiftLeft)
+	h.tapRow("Shopping / Store")
+	h.ts.SendKeyUpEvent(services.LogicalKeyboardKeyShiftLeft)
+	h.pressChoice("Drop")
+	if h.choice(3) != plan.Drop || h.choice(4) != plan.Drop {
+		t.Errorf("Drop gave %q and %q", h.choice(3), h.choice(4))
+	}
+}
+
+// segmentEnabled says whether the choice button with the label can be used.
+func (h *harness) segmentEnabled(label string) bool {
+	h.t.Helper()
+	for _, e := range h.ts.Elements(gluttertest.ByType[*kit.Segmented]()) {
+		if seg := e.Widget().(*kit.Segmented); seg.Label() == "Choice" {
+			for _, sg := range seg.Segments() {
+				if sg.Label == label {
+					return !sg.Disabled
+				}
+			}
+		}
+	}
+	h.t.Fatal("no choice buttons")
+	return false
+}
+
+// pressChoice presses the choice button with the label (not the choice in a row).
+func (h *harness) pressChoice(label string) {
+	h.t.Helper()
+	h.ts.Tap(gluttertest.Descendant(gluttertest.ByType[*kit.Segmented](), gluttertest.ByText(label)))
+	h.ts.PumpAndSettle()
+}
+
+// planDialog presses the button and answers the file dialog it opens with path.
+func (h *harness) planDialog(button, path string) {
+	h.t.Helper()
+	h.ts.Tap(gluttertest.ByText(button))
+	h.ts.PumpAndSettle()
+	h.waitFor("the file dialog", func() bool { return h.fd.PendingFileChoosers() == 1 })
+	h.fd.AnswerFileChooser(path)
+	h.waitFor("the dialog to close", func() bool { return h.fd.PendingFileChoosers() == 0 && !h.state().busy })
+}
+
+func (h *harness) noteText() string {
+	if n := h.state().note; n != nil {
+		return n.text
+	}
+	return ""
+}
+
+func TestScreenSavesAndLoadsAPlan(t *testing.T) {
+	a, b := modeltest.MergePair()
+	h := newHarness(t, kit.LightTheme(), sessionOf(a, b))
+	h.tapRow("Banking / My bank")
+	h.key(services.LogicalKeyboardKeyKeyB)
+	h.tapRow("Email / Work mail")
+	h.key(services.LogicalKeyboardKeyKeyD)
+
+	path := filepath.Join(t.TempDir(), "plan.txt")
+	h.planDialog("Save plan…", path)
+	if want := "Saved the plan to plan.txt."; h.noteText() != want {
+		t.Fatalf("note = %q, want %q", h.noteText(), want)
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(data), plan.FormatLine) {
+		t.Errorf("the plan file starts with %q", firstLine(string(data)))
+	}
+	for _, secret := range []string{"bank-password-a", "bank-password-b", "pw-work-mail"} {
+		if strings.Contains(string(data), secret) {
+			t.Errorf("the plan file holds the secret %q", secret)
+		}
+	}
+	if fi, _ := os.Stat(path); fi.Mode().Perm() != 0o600 {
+		t.Errorf("mode %v, want 0600", fi.Mode().Perm())
+	}
+
+	// Change the choices, then load the file: the saved choices come back, all decided.
+	h.tapRow("Banking / My bank")
+	h.key(services.LogicalKeyboardKeyKeyA)
+	h.tapRow("Email / Work mail")
+	h.key(services.LogicalKeyboardKeyKeyK)
+	h.planDialog("Load plan…", path)
+	if h.choice(3) != plan.TakeB || h.choice(0) != plan.Drop {
+		t.Errorf("after loading: choices %q, %q; want take-b, drop", h.choice(3), h.choice(0))
+	}
+	if h.model().Undecided() != 0 {
+		t.Errorf("undecided = %d; a loaded plan decides everything", h.model().Undecided())
+	}
+	if want := "Loaded the choices of plan.txt."; h.noteText() != want {
+		t.Errorf("note = %q, want %q", h.noteText(), want)
+	}
+}
+
+func firstLine(s string) string { return strings.SplitN(s, "\n", 2)[0] }
+
+func TestScreenPlanFileErrors(t *testing.T) {
+	a, b := modeltest.MergePair()
+	// A plan for other databases.
+	otherA, otherB := modeltest.MergePair()
+	otherA.Meta.DatabaseName = "Other"
+	other := plan.New(plan.Input{Hash: [32]byte{9}, Name: "x.kdbx"}, plan.Input{Hash: [32]byte{8}, Name: "y.kdbx"}, diff.Changes(otherA, otherB))
+	var stale strings.Builder
+	if err := plan.Write(&stale, other, plan.WriteOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	write := func(name, text string) string {
+		p := filepath.Join(dir, name)
+		if err := os.WriteFile(p, []byte(text), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	tests := []struct {
+		name   string
+		button string
+		path   func(h *harness) string
+		want   string
+	}{
+		{"load a file that is no plan", "Load plan…", func(*harness) string { return write("junk", "hello\n") },
+			`The plan was not loaded: the plan, line 1: the first line must be "passbank-plan 1"`},
+		{"load a plan of other databases", "Load plan…", func(*harness) string { return write("stale", stale.String()) },
+			"The plan was not loaded: the plan was not made for these databases: input A has changed since"},
+		{"load a missing file", "Load plan…", func(*harness) string { return filepath.Join(dir, "missing") },
+			"The plan was not loaded: missing cannot be read:"},
+		{"save over database A", "Save plan…", func(h *harness) string {
+			return write("a-copy.kdbx", "x") // replaced below by the path of A
+		}, ""},
+		{"save in a missing folder", "Save plan…", func(*harness) string { return filepath.Join(dir, "no", "plan.txt") },
+			"The plan was not saved: plan.txt cannot be written:"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, kit.LightTheme(), sessionOf(a.Clone(), b.Clone()))
+			path := tt.path(h)
+			if tt.name == "save over database A" {
+				if err := os.WriteFile(filepath.Join(dir, "db-a.kdbx"), []byte("database"), 0o600); err != nil {
+					t.Fatal(err)
+				}
+				h.sess.A.Path = filepath.Join(dir, "db-a.kdbx")
+				path = h.sess.A.Path
+				tt.want = "The plan was not saved: the plan file must not be one of the databases"
+			}
+			before := slices.Clone(h.sess.Plan.Choices)
+			h.planDialog(tt.button, path)
+			if got := h.noteText(); !strings.HasPrefix(got, tt.want) {
+				t.Errorf("note = %q, want it to start with %q", got, tt.want)
+			}
+			if !slices.Equal(h.sess.Plan.Choices, before) {
+				t.Error("a failed plan action changed the choices")
+			}
+			if h.model().Undecided() != 9 {
+				t.Errorf("undecided = %d after a failure", h.model().Undecided())
+			}
+			if tt.name == "save over database A" {
+				if b, _ := os.ReadFile(path); string(b) != "database" {
+					t.Errorf("the database was overwritten: %q", b)
+				}
+			}
+		})
+	}
+}
+
+func TestScreenCancelledPlanDialogChangesNothing(t *testing.T) {
+	a, b := modeltest.MergePair()
+	h := newHarness(t, kit.LightTheme(), sessionOf(a, b))
+	for _, button := range []string{"Load plan…", "Save plan…"} {
+		h.ts.Tap(gluttertest.ByText(button))
+		h.ts.PumpAndSettle()
+		h.waitFor("the dialog", func() bool { return h.fd.PendingFileChoosers() == 1 })
+		h.fd.CancelFileChooser()
+		h.waitFor("the dialog to close", func() bool { return h.fd.PendingFileChoosers() == 0 && !h.state().busy })
+		if h.noteText() != "" {
+			t.Errorf("%s: a cancelled dialog left the note %q", button, h.noteText())
+		}
+	}
+	if h.model().Undecided() != 9 {
+		t.Errorf("undecided = %d", h.model().Undecided())
+	}
+}
+
+func TestScreenPlanButtonsWaitForTheDialog(t *testing.T) {
+	a, b := modeltest.MergePair()
+	h := newHarness(t, kit.LightTheme(), sessionOf(a, b))
+	h.ts.Tap(gluttertest.ByText("Save plan…"))
+	h.ts.PumpAndSettle()
+	h.waitFor("the dialog", func() bool { return h.fd.PendingFileChoosers() == 1 })
+	if h.button("Load plan…").Enabled() || h.button("Save plan…").Enabled() {
+		t.Error("the plan buttons are enabled while a dialog is open")
+	}
+	h.fd.CancelFileChooser()
+	h.waitFor("the dialog to close", func() bool { return !h.state().busy })
+	if !h.button("Load plan…").Enabled() {
+		t.Error("the plan buttons stay disabled")
+	}
+}
+
+func TestScreenDroppedGroupWithKeptItems(t *testing.T) {
+	a, b := modeltest.MergePair()
+	h := newHarness(t, kit.LightTheme(), sessionOf(a, b))
+	if h.ts.Exists(gluttertest.ByText("Drop everything in this group")) {
+		t.Fatal("a fix is offered although nothing conflicts")
+	}
+	// Drop the group Games (only B has it) and keep the entry in it.
+	h.tapRow("Games (group)")
+	h.key(services.LogicalKeyboardKeyKeyD)
+	want := "The group “Games (group)” is dropped, but 1 item in it is kept. The new database cannot be written like this."
+	if !h.ts.Exists(gluttertest.ByText(want)) {
+		t.Fatalf("no warning %q", want)
+	}
+	if err := merge.Validate(h.sess.Plan); err == nil {
+		t.Fatal("the plan with a conflict is valid")
+	}
+	h.ts.Tap(gluttertest.ByText("Drop everything in this group"))
+	h.ts.PumpAndSettle()
+	if h.ts.Exists(gluttertest.ByText("Drop everything in this group")) {
+		t.Error("the warning stays after the fix")
+	}
+	if h.choice(2) != plan.Drop || !h.sess.Decided[2] {
+		t.Errorf("the entry in the dropped group got %q", h.choice(2))
+	}
+	if err := merge.Validate(h.sess.Plan); err != nil {
+		t.Errorf("the plan is still not valid after the fix: %v", err)
+	}
+	if h.choice(0) != plan.Keep {
+		t.Errorf("the fix changed another row: %q", h.choice(0))
+	}
+}
+
+func TestModelDropEverythingInNestedGroups(t *testing.T) {
+	a, b := modeltest.MergePair()
+	// B gets Games/Arcade (a group) with an entry in it, so dropping Games takes two steps.
+	var games *model.Group
+	for _, g := range b.Root.Groups {
+		if g.Name == "Games" {
+			games = g
+		}
+	}
+	arcade := &model.Group{UUID: model.UUID{0: 0xab, 1: 0xdd, 15: 1}, Name: "Arcade", Times: games.Times}
+	arcade.Entries = []*model.Entry{games.Entries[0].Clone()}
+	arcade.Entries[0].UUID = model.UUID{0: 0xab, 1: 0xdd, 15: 2}
+	arcade.Entries[0].Fields[0].Value = secret.New([]byte("Pinball"))
+	games.Groups = append(games.Groups, arcade)
+	m := NewModel(planOf(a, b), nil)
+	var gamesIdx int
+	for i, c := range m.Plan().Changes {
+		if c.Item == diff.ItemGroup && c.Title == "Games" {
+			gamesIdx = i
+		}
+	}
+	m.Set(gamesIdx, plan.Drop)
+	conflicts := m.GroupConflicts()
+	if len(conflicts) != 1 || conflicts[0].Group != gamesIdx || len(conflicts[0].Items) < 2 {
+		t.Fatalf("conflicts = %+v", conflicts)
+	}
+	n := m.DropEverythingIn(gamesIdx)
+	if n < 3 {
+		t.Errorf("dropped %d changes, want the entry, the group Arcade and its entry", n)
+	}
+	if len(m.GroupConflicts()) != 0 {
+		t.Errorf("conflicts remain: %+v", m.GroupConflicts())
+	}
+	if err := merge.Validate(m.Plan()); err != nil {
+		t.Errorf("the plan is not valid: %v", err)
+	}
+}
+
+// TestDetailsGolden shows the details of one change of every kind, in the light
+// theme, with fixture data only. The first one is the proof image of step 8.4: an
+// entry that differs in its password (masked) and its URL.
+func TestDetailsGolden(t *testing.T) {
+	tests := []struct {
+		golden string
+		row    string
+	}{
+		{"details-differs", "Banking / My bank"},
+		{"details-differs-title", "Shopping / Store"},
+		{"details-only-a", "Email / Work mail"},
+		{"details-only-b", "Games / Old forum"},
+		{"details-only-b-group", "Games (group)"},
+		{"details-deleted-in-a", "Social / Old account"},
+		{"details-deleted-in-b", "Social / Stale login"},
+		{"details-group-differs", "Shopping (group)"},
+		{"details-settings", "Database settings"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.golden, func(t *testing.T) {
+			a, b := pairWithAttachmentsFor(t)
+			h := newHarness(t, kit.LightTheme(), sessionOf(a, b))
+			h.tapRow(tt.row)
+			h.ts.MatchesGolden(tt.golden)
+			if tt.golden == "details-differs" {
+				testutil.Proof(t, h.ts, "8.4-review-details")
+			}
+		})
+	}
+}
+
+// pairWithAttachmentsFor is the merge fixtures with the attachments of
+// pairWithAttachments on "My bank".
+func pairWithAttachmentsFor(t *testing.T) (a, b *model.Database) {
+	t.Helper()
+	a, b, _ = pairWithAttachments(t)
+	return a, b
 }

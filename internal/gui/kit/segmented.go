@@ -37,6 +37,12 @@ func NewSegmented(label string, segments []Segment, selected string, onChanged f
 	return &Segmented{StatelessWidget: widgets.NewStatelessWidgetBase(opts...), label: label, segments: segments, selected: selected, onChanged: onChanged}
 }
 
+// Label is the name of the control.
+func (s *Segmented) Label() string { return s.label }
+
+// Segments are the choices of the control.
+func (s *Segmented) Segments() []Segment { return s.segments }
+
 // Selected is the value of the chosen segment.
 func (s *Segmented) Selected() string { return s.selected }
 
