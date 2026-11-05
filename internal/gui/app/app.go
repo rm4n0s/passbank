@@ -6,7 +6,6 @@ import (
 	"github.com/rm4n0s/errors"
 	"github.com/rm4n0s/glutter/animation"
 	"github.com/rm4n0s/glutter/foundation"
-	"github.com/rm4n0s/glutter/rendering"
 	"github.com/rm4n0s/glutter/ui"
 	"github.com/rm4n0s/glutter/widgets"
 
@@ -15,6 +14,7 @@ import (
 	"github.com/rm4n0s/passbank/internal/gui/open"
 	"github.com/rm4n0s/passbank/internal/gui/review"
 	"github.com/rm4n0s/passbank/internal/gui/session"
+	"github.com/rm4n0s/passbank/internal/gui/write"
 )
 
 // The identity of the application.
@@ -109,18 +109,9 @@ func (s *appState) page(bc widgets.BuildContext) widgets.Widget {
 	case screenReview:
 		body = review.NewScreen(s.sess, func() { s.sess.Wipe(); s.goTo(screenOpen) }, func() { s.goTo(screenWrite) })
 	case screenWrite:
-		body = placeholder("Write", nil, func() { s.goTo(screenReview) })
+		body = write.NewScreen(s.sess, func() { s.goTo(screenReview) })
 	default:
 		body = open.NewScreen(s.sess, func() { s.goTo(screenReview) })
 	}
 	return kit.NewRoot(theme, body)
-}
-
-// placeholder stands for a screen that a later step builds.
-func placeholder(name string, next, back func()) widgets.Widget {
-	return widgets.NewCenter(widgets.NewColumn([]widgets.Widget{
-		widgets.NewText(name),
-		kit.NewButton("Back", back),
-		kit.NewButton("Next", next),
-	}, widgets.ColumnOpts{MainAxisSize: rendering.MainAxisSizeMin}))
 }

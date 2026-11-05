@@ -87,6 +87,27 @@ type Session struct {
 	// that does); the others still hold their default. The Review screen's
 	// "undecided" filter lists those.
 	Decided []bool
+	// Output holds the choices of the Write screen that are not secret, so that going
+	// back to Review and on again keeps them.
+	Output Output
+}
+
+// Output is what the Write screen remembers while the session lasts. Passwords are
+// never part of it.
+type Output struct {
+	// Path is the file to write.
+	Path string
+	// Version is the KDBX version, as the Write screen names it ("4", "4.1", "3.1",
+	// ...); empty is "4".
+	Version string
+	// Credentials says whose credentials the new database gets: "a", "b" or "new";
+	// empty is "a".
+	Credentials string
+	// KeyFile is the path of the key file of the new credentials.
+	KeyFile string
+	// Encryption says whose encryption settings it gets: "a", "b" or "default"; empty
+	// is "default".
+	Encryption string
 }
 
 // New returns an empty session.
@@ -122,6 +143,7 @@ func (s *Session) Wipe() {
 	s.B.Wipe()
 	s.A, s.B = nil, nil
 	s.dropPlan()
+	s.Output = Output{}
 }
 
 func (s *Session) dropPlan() { s.Plan, s.Decided = nil, nil }

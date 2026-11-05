@@ -393,7 +393,9 @@ Built on Glutter's `widgets` layer, without Material. One window, three screens:
    - a summary of what the result will contain
    - **Write**, which shows progress while the KDF and the write run off the UI thread, then the verification result
 
-   **Back** returns to Review with every choice intact.
+   **Back** returns to Review with every choice intact, and the Write screen remembers its own options (path, version, where the credentials and the encryption come from, the key file; never a password) while the session lasts.
+
+   Details: the screen builds the result with `merge.Apply` off the UI thread when it opens, and again when the settings source changes (which sets the choice of the settings change, so it shows in Review too). "KDBX 4" writes 4.0, or 4.1 when the result holds something only 4.1 stores, and the screen says which. The credentials are those of A, of B or new (a password typed twice, and/or a key file; neither is refused); the encryption is A's, B's or the defaults of the version, and one the version cannot hold (`EncryptionNotInVersion`) is shown at once and keeps Write disabled. The losses of the chosen version (`kdbx.Losses`) are listed as soon as the version is chosen; Write then opens a confirmation dialog, and nothing is written when it is cancelled. An existing file is replaced only when the path came from the save dialog, whose own confirmation counts as consent; a typed path that exists is `OutputExists`, and the inputs are never the output. Writing runs `output.Write` off the UI thread with a progress bar and a Cancel button that stops the key derivation; a cancelled write leaves no file. A success says that the file was read back with the same credentials and equals the result (SPEC §5).
 
 - **Debug flags**: debug builds (without `glutter_release`) accept `--dev-a PATH`, `--dev-b PATH` and `--dev-password-file PATH` to preload fixtures for display tests and proofs. Release builds don't have them, and no build accepts a password in an argument
 - **State**: the GUI keeps no state between runs: no recent files, no settings files

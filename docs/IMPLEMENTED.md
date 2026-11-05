@@ -586,3 +586,16 @@ history          2
 - **Manual checks:** none.
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** a plan loaded from a file takes the file's choices for every change. With several rows selected the table shows the one under the cursor.
+
+## 8.5 The Write screen
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-8.5-write-screen
+- **Summary:** `internal/gui/write` is SPEC §13 screen 3. The file card has the output path (a path field and **Choose…**, which opens `desktop.SaveFile` with a `*.kdbx` filter; the dialog's confirmation of replacing a file is the user's consent) and the version menu (KDBX 4 by default, 4.1, 4.0, 3.1, 3.0, 2.0; "KDBX 4" says whether it is 4.0 or 4.1). The security card has the settings source (From A or From B, which sets the settings change of the plan and rebuilds the result), the credentials (As A, As B, or New with a password typed twice and an optional key file) and the encryption (As A, As B, defaults of the version). The live checks show `EncryptionNotInVersion` and the credentials problems at once and disable Write, and list what the chosen version loses (`kdbx.Losses`), which Write asks to confirm in a dialog. The summary lists the changes by kind and choice and what the result holds. `merge.Apply` and `output.Write` run off the UI thread (progress, Cancel stopping the key derivation); a success says that the file was read back and verified, a failure is a banner with the message of SPEC §15. `session.Output` keeps the options (never a password) so Back and Next again find them. `internal/gui/app` shows Review and Write now; the placeholders are gone.
+- **Main files:** internal/gui/write/options.go, screen.go; internal/gui/session/session.go; internal/gui/app/app.go.
+- **Tests:** the first screen (summary, Write disabled without a path, defaults KDBX 4 / As A / defaults); a write with the defaults (opens with A's password as 4.0, holds the merged entries, both inputs unchanged byte for byte, the path remembered); every version (4, 4.1, 4.0, 3.1, 3.0, 2.0 are read back as that version); `EncryptionNotInVersion` live and cleared by B's encryption or KDBX 4; losses (warning, dialog, Cancel writes nothing, confirming writes and says what was left out); a typed existing path refused with the file untouched, a path from the dialog replaces it, the inputs refused as output; a missing folder; new credentials (empty and mismatching refused, written, A's password no longer opens it), a key file alone, B's credentials; the settings source reaches the file; Back keeps the options and the plan; Cancel in the middle of a slow key derivation leaves no file; no plan; goldens in both themes and after a write.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method A, `go test ./internal/gui/write -run TestScreenGolden -proof` wrote `docs/implemented-proof-images/8.5-write.png`: the screen with the version menu (KDBX 3.1 chosen), a loss warning and the summary.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the typed passwords live in the field controllers as Go strings, which cannot be wiped; they are cleared when the screen goes. The screen shows the file name, not the whole path, in its messages, like the Open screen.
