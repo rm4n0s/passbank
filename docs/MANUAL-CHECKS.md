@@ -25,7 +25,7 @@ one: in KeePassXC 2.7 or KeePass 2.5x, make a database, add an entry, give a gro
 properties) or move an entry to another group, and save. Copy it to `testdata/k41-keepassxc.kdbx`, with the
 password `fixture-min`, and tell the agent.
 
-## 2.8: the password prompt on a real terminal
+## 2.8 and 7.5: the password prompt and the interactive choices on a real terminal
 
 The prompt (`cli.TTY`) reads from `/dev/tty` and cannot run in a test. In a real terminal, from the
 project folder:
@@ -37,3 +37,12 @@ summary appears (version 4.0, cipher AES-256, kdf Argon2d, 4 groups, 4 entries, 
 items). Run it again, type a wrong password, and check that you get one line saying the password or key
 file is wrong. Tell the agent what you saw.
 
+
+For the interactive choices (step 7.5), in a real terminal from the project folder (the merge fixtures'
+passwords are `merge-pair-a` for A and `merge-pair-b` for B; the output goes to a new folder):
+
+    mkdir -p /tmp/pb-check && go run ./cmd/passbank merge internal/cli/testdata/merge/a.kdbx internal/cli/testdata/merge/b.kdbx -o /tmp/pb-check/out.kdbx
+
+Type the two passwords, then Enter on each change (nine of them), `v` on the "My bank" change to see the
+passwords, and `y` at the end. Check that `go run ./cmd/passbank info /tmp/pb-check/out.kdbx` (password
+`merge-pair-a`) shows 6 entries. Try `q` once and check that no file is written. Tell the agent what you saw.

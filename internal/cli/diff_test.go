@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -235,7 +236,9 @@ type perPathTerminal struct {
 	prompts   []string
 }
 
-func (p *perPathTerminal) IsTerminal() bool { return true }
+func (p *perPathTerminal) IsTerminal() bool                { return true }
+func (p *perPathTerminal) ReadLine(string) (string, error) { return "", io.EOF }
+func (p *perPathTerminal) Write(b []byte) (int, error)     { return len(b), nil }
 
 func (p *perPathTerminal) ReadPassword(prompt string) (secret.Bytes, error) {
 	p.prompts = append(p.prompts, prompt)

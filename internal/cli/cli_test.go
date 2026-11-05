@@ -16,7 +16,9 @@ import (
 // fakeTerminal is the Terminal of the tests.
 type fakeTerminal struct{}
 
-func (fakeTerminal) IsTerminal() bool { return false }
+func (fakeTerminal) IsTerminal() bool                { return false }
+func (fakeTerminal) ReadLine(string) (string, error) { return "", io.EOF }
+func (fakeTerminal) Write(p []byte) (int, error)     { return len(p), nil }
 func (fakeTerminal) ReadPassword(string) (secret.Bytes, error) {
 	return secret.Bytes{}, nil
 }

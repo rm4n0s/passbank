@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"flag"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -37,9 +38,30 @@ type scriptedTerminal struct {
 	password string
 	err      error
 	prompts  []string
+	// answers are the lines ReadLine gives, in order; at the end it gives io.EOF.
+	answers []string
+	// lines are the prompts ReadLine was given.
+	lines []string
+	// out is everything written to the terminal.
+	out bytes.Buffer
 }
 
 func (s *scriptedTerminal) IsTerminal() bool { return s.tty }
+
+func (s *scriptedTerminal) ReadLine(prompt string) (string, error) {
+	s.lines = append(s.lines, prompt)
+	s.out.WriteString(prompt)
+	if len(s.answers) == 0 {
+		s.out.WriteString("<end of input>\n")
+		return "", io.EOF
+	}
+	a := s.answers[0]
+	s.answers = s.answers[1:]
+	s.out.WriteString(a + "\n")
+	return a, nil
+}
+
+func (s *scriptedTerminal) Write(p []byte) (int, error) { return s.out.Write(p) }
 
 func (s *scriptedTerminal) ReadPassword(prompt string) (secret.Bytes, error) {
 	s.prompts = append(s.prompts, prompt)

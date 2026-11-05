@@ -5,11 +5,10 @@ import (
 	"flag"
 	"io"
 	"os"
-	"strconv"
-	"strings"
 
 	"github.com/rm4n0s/errors"
 
+	"github.com/rm4n0s/passbank/internal/cli/review"
 	"github.com/rm4n0s/passbank/internal/core/diff"
 	"github.com/rm4n0s/passbank/internal/core/kdbx"
 	"github.com/rm4n0s/passbank/internal/core/kdbx/crypto"
@@ -150,11 +149,11 @@ func runMerge(ctx context.Context, e env, args []string) int {
 		errs.println(mergeUsage)
 		return ExitUsage
 	}
-	if o.planPath == "" && !o.hasPrefer {
-		// TODO(step 7.5): without --plan and --prefer the choices are asked for on the terminal.
-		reportError(errs, "merge", "", errors.New("UsageInvalid", "merge needs --plan or --prefer"), false)
-		errs.println(mergeUsage)
-		return ExitUsage
+	interactive := o.planPath == "" && !o.hasPrefer
+	if interactive {
+		if err := needTerminal(e); err != nil {
+			return reportError(errs, "merge", "", err, o.debug)
+		}
 	}
 
 	a, err := openInput(ctx, e, o.credsA, o.files[0])
@@ -173,17 +172,38 @@ func runMerge(ctx context.Context, e env, args []string) int {
 	if err != nil {
 		return reportError(errs, "merge", o.planPath, err, o.debug)
 	}
+	if interactive {
+		outcome, err := review.Run(e.term, p, review.Options{Out: o.out})
+		if err != nil {
+			return reportError(errs, "merge", "", err, o.debug)
+		}
+		if outcome == review.Quit {
+			errs.println("passbank merge: stopped; nothing was written")
+			return ExitFailure
+		}
+	}
 	if o.settingsFrom != "" {
 		setSettings(p, o.settingsFrom)
 	}
 	return finishMerge(ctx, e, o, a, b, p, out, errs)
 }
 
-// choicesFor makes the plan: read from the plan file, or from the rule.
+// needTerminal fails with ChoicesNeedTerminal when there is no terminal to ask on.
+func needTerminal(e env) error {
+	if e.term == nil || !e.term.IsTerminal() {
+		return errors.New("ChoicesNeedTerminal", "there is no terminal to ask for choices; use --plan or --prefer")
+	}
+	return nil
+}
+
+// choicesFor makes the plan: read from the plan file, or from the rule. Without
+// either it holds the defaults, for the interactive review to change.
 func choicesFor(ctx context.Context, o *mergeOptions, a, b *input, changes []diff.Change) (*plan.Plan, error) {
 	if o.planPath == "" {
 		p := plan.New(a.planInput(), b.planInput(), changes)
-		plan.ApplyRule(p, o.prefer, nil)
+		if o.hasPrefer {
+			plan.ApplyRule(p, o.prefer, nil)
+		}
 		return p, nil
 	}
 	return readPlanFile(ctx, o.planPath, a.planInput(), b.planInput(), changes)
@@ -271,26 +291,8 @@ func outputCredentials(ctx context.Context, e env, o *mergeOptions, a, b *input)
 // choice, the result and the file written.
 func printMergeSummary(out *printer, o *mergeOptions, a, b *input, p *plan.Plan, res *model.Database, version kdbx.Version) {
 	out.printf("A: %s\nB: %s\n", a.path, b.path)
-	out.printf("changes: %d\n", len(p.Changes))
-	for _, k := range diff.Kinds {
-		counts := map[plan.Choice]int{}
-		total := 0
-		for i, c := range p.Changes {
-			if c.Kind == k {
-				counts[p.Choices[i]]++
-				total++
-			}
-		}
-		if total == 0 {
-			continue
-		}
-		var parts []string
-		for _, ch := range plan.Allowed(k) {
-			if counts[ch] > 0 {
-				parts = append(parts, string(ch)+" "+strconv.Itoa(counts[ch]))
-			}
-		}
-		out.printf("  %-14s %-3d %s\n", k, total, strings.Join(parts, ", "))
+	for _, line := range p.Summary() {
+		out.println(line)
 	}
 	groups, entries := 0, 0
 	res.WalkGroups(func(g *model.Group) bool { groups++; entries += len(g.Entries); return true })

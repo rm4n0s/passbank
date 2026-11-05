@@ -1,6 +1,10 @@
 package plan
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/rm4n0s/passbank/internal/core/diff"
 )
 
@@ -214,4 +218,32 @@ func keepIf(b bool) Choice {
 		return Keep
 	}
 	return Drop
+}
+
+// Summary describes the choices of the plan for the user: the first line is the
+// number of changes, then comes one line for each kind of change that occurs, with
+// how many there are and how many got each choice.
+func (p *Plan) Summary() []string {
+	out := []string{"changes: " + strconv.Itoa(len(p.Changes))}
+	for _, k := range diff.Kinds {
+		counts := map[Choice]int{}
+		total := 0
+		for i, c := range p.Changes {
+			if c.Kind == k {
+				counts[p.Choices[i]]++
+				total++
+			}
+		}
+		if total == 0 {
+			continue
+		}
+		var parts []string
+		for _, ch := range Allowed(k) {
+			if counts[ch] > 0 {
+				parts = append(parts, string(ch)+" "+strconv.Itoa(counts[ch]))
+			}
+		}
+		out = append(out, fmt.Sprintf("  %-14s %-3d %s", k, total, strings.Join(parts, ", ")))
+	}
+	return out
 }

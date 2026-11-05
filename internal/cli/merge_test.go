@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"crypto/sha256"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -382,7 +383,9 @@ func TestMergeCredentials(t *testing.T) {
 // with another.
 type differingTerminal struct{ n int }
 
-func (d *differingTerminal) IsTerminal() bool { return true }
+func (d *differingTerminal) IsTerminal() bool                { return true }
+func (d *differingTerminal) ReadLine(string) (string, error) { return "", io.EOF }
+func (d *differingTerminal) Write(b []byte) (int, error)     { return len(b), nil }
 func (d *differingTerminal) ReadPassword(string) (secret.Bytes, error) {
 	d.n++
 	return secret.New([]byte([]string{"", "first", "second"}[d.n])), nil
@@ -579,7 +582,6 @@ func TestMergeUsageErrors(t *testing.T) {
 		{"no databases", []string{"merge"}, "needs two databases"},
 		{"one database", []string{"merge", a, "-o", out, "--prefer", "a"}, "needs two databases"},
 		{"no output", []string{"merge", a, b, "--prefer", "a"}, "-o OUT"},
-		{"neither plan nor rule", []string{"merge", a, b, "-o", out}, "needs --plan or --prefer"},
 		{"both plan and rule", []string{"merge", a, b, "-o", out, "--plan", "x", "--prefer", "a"}, "contradict"},
 		{"a bad rule", []string{"merge", a, b, "-o", out, "--prefer", "oldest"}, "--prefer must be"},
 		{"a bad format", []string{"merge", a, b, "-o", out, "--prefer", "a", "--format", "5"}, "--format must be"},

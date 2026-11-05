@@ -507,3 +507,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** `--credentials` defaults to `a` and `--encryption` to `default`, which SPEC §12 did not say (now it does). New tag in SPEC §15: `PlanFileReadFailed`.
 
+## 7.5 Interactive choices
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-7.5-interactive
+- **Summary:** `passbank merge A B -o OUT` without `--plan` and `--prefer` is interactive (SPEC §12.1). `internal/cli/review` goes through the changes in the stable order, shows each (position, kind, group path and title, both modification times, the differing field names, and the Title, UserName and URL values that differ side by side), and asks on the terminal: the keys `a` `b` `t` `k` `d` that the kind allows, Enter for the choice shown, `v` (password, notes and custom fields that differ, for this change only, printed on the terminal and nowhere else), `p`, `r` (a rule for this and the remaining changes), `?` and `q`. An invalid key asks again. Dropping a group asks "Also drop the N items inside it? [y/N]" (no keeps the group); keeping an item in a dropped group asks "Keep the group too? [Y/n]"; conflicts a rule leaves are settled before the summary. The end of the review prints the summary and asks "Write OUT? [y/N]". Without a terminal the command fails with `ChoicesNeedTerminal`; quitting, the end of the input or answering no writes nothing and exits 1. The `Terminal` gained `ReadLine` and `Write`; `TTY` implements them on `/dev/tty` byte by byte. `plan.Plan.Summary` is the count lines of both the review and the merge summary.
+- **Main files:** internal/cli/review/review.go, internal/cli/terminal.go, internal/cli/merge.go, internal/core/plan/plan.go (`Summary`).
+- **Tests:** accepting every default equals `--prefer newer`; a golden transcript of a session using help, an invalid key, back, `v`, `t`, upper case and spaces, with its summary and entries; leaving in six ways writes nothing; no terminal; rules (from the middle, the wrong word asked again, cancelled, union, `a`); going back; keys the kind refuses; dropping a group (yes, no), keeping an item in a dropped group (yes, no) and the rule that leaves a conflict (yes, Enter, no); help and `v` with nothing to show; `--settings-from` overriding; the password shown once on the terminal and never on stdout or stderr. `TTY.ReadLine` and `Write` on a real pseudo-terminal (one line at a time, a password not echoed) and on files (partial line, empty line, end of input, too long), and their failures with routes.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method C — the golden transcript `internal/cli/testdata/golden/merge-interactive.transcript.txt` of an interactive merge of the related pair.
+- **Manual checks:** pending, see docs/MANUAL-CHECKS.md (the choices on a real terminal, with item 2.8).
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** Enter takes the choice shown, which is the default of §8 unless an earlier answer (or dropping a group) changed it, so that the cascade of a group drop is not undone by Enter (SPEC §12.1 says so). Two tags are new in SPEC §15: `LineTooLong` and `LineReadFailed`.
+

@@ -353,12 +353,14 @@ Then it asks for a choice. The prompt lists only the choices the kind allows, on
 | `t` | both (keep two) |
 | `k` | keep |
 | `d` | drop |
-| Enter | the default of section 8 |
+| Enter | the choice shown: the default of section 8, unless an earlier answer changed it (the prompt then says `Enter = drop (default: keep)`) |
 | `v` | show the protected values that differ, for this change only; they are printed once and kept nowhere |
 | `p` | go back to the previous change |
 | `r` | apply a rule of section 9 to this change and all the remaining ones |
 | `?` | help |
 | `q` | quit; nothing is written (exit code 1) |
+
+The prompt of each change lists the choices the kind allows and what Enter does. A choice the kind does not allow, or any other key, is refused and asked again. `r` asks for the rule (`newer`, `a`, `b`, `union`; Enter cancels) and, after applying it, settles any dropped group that the rule left an item in by asking "Keep the group?". A change shows the group path, title, both modification times, the names of the fields that differ and the values of Title, UserName and URL where they differ (for an item on one side only: its user name and URL). `--settings-from` overrides the answer for the settings.
 
 Dropping a group that still holds kept items asks "also drop the N items inside it? [y/N]"; answering no keeps the group. After the last change it prints the summary of section 12 and asks "Write OUT? [y/N]" before writing. Without a terminal, the command fails with `ChoicesNeedTerminal`, which tells the user to use `--plan` or `--prefer`.
 
@@ -422,6 +424,7 @@ Each failure has a Tag (see CLAUDE.md, "Error handling") and a message for the u
 | `PlanReadFailed`, `PlanWriteFailed`, `PlanInconsistent` | "the plan cannot be read or written: <cause>"; `PlanInconsistent` is a bug (a plan with a different number of choices and changes) |
 | `PlanFileReadFailed` | "<plan> cannot be read: <cause>" |
 | `PlanFileExists`, `PlanFileWriteFailed`, `PlanOutputIsInput` | "<plan> exists; use --force to replace it"; "<plan> cannot be written: <cause>"; "the plan file must not be one of the databases" |
+| `LineTooLong`, `LineReadFailed` | "the terminal line is too long (4096 bytes at most)"; "the terminal cannot be read: <cause>" |
 | `ChoicesNeedTerminal` | "There is no terminal to ask for choices; use --plan or --prefer" |
 | `OutputExists` | "<out> exists; use --force to replace it" |
 | `OutputVersionLosesData` | "KDBX <v> cannot store <what> of <n> items; choose KDBX 4 or accept the loss" |

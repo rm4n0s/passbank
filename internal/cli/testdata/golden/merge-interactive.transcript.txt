@@ -1,0 +1,111 @@
+
+[1/9] only-a  Email / Work mail
+  only in A, modified 2026-10-01 05:00
+  username me@work.example
+  url      https://mail.work.example
+  [k] keep  [d] drop   Enter = keep
+choice> ?
+  a  take A's version          b  take B's version
+  t  keep both (B's copy gets a new UUID)
+  k  keep it                   d  drop it
+  Enter  the choice shown (the default)   v  show the password, notes and custom fields that differ
+  p  go back                   r  apply a rule to this and all the remaining changes
+  q  quit; nothing is written
+
+[1/9] only-a  Email / Work mail
+  only in A, modified 2026-10-01 05:00
+  username me@work.example
+  url      https://mail.work.example
+  [k] keep  [d] drop   Enter = keep
+choice> zz
+  "zz" is not one of the keys; ? shows them
+
+[1/9] only-a  Email / Work mail
+  only in A, modified 2026-10-01 05:00
+  username me@work.example
+  url      https://mail.work.example
+  [k] keep  [d] drop   Enter = keep
+choice> d
+
+[2/9] only-b  group Games
+  only in B, modified 2026-10-01 00:00
+  [k] keep  [d] drop   Enter = keep
+choice> 
+
+[3/9] only-b  Games / Old forum
+  only in B, modified 2026-10-01 07:00
+  username gamer
+  url      https://forum.example.com
+  [k] keep  [d] drop   Enter = keep
+choice> p
+
+[2/9] only-b  group Games
+  only in B, modified 2026-10-01 00:00
+  [k] keep  [d] drop   Enter = keep
+choice> 
+
+[3/9] only-b  Games / Old forum
+  only in B, modified 2026-10-01 07:00
+  username gamer
+  url      https://forum.example.com
+  [k] keep  [d] drop   Enter = keep
+choice> k
+
+[4/9] differs  Banking / My bank
+  A modified 2026-10-01 03:00, B modified 2026-10-01 20:00
+  differs: password, url
+  url      A: https://bank.example.com   B: https://bank.example.org
+  [a] take A  [b] take B  [t] keep both  [d] drop   Enter = take B
+choice> v
+  password
+    A: bank-password-a
+    B: bank-password-b
+
+[4/9] differs  Banking / My bank
+  A modified 2026-10-01 03:00, B modified 2026-10-01 20:00
+  differs: password, url
+  url      A: https://bank.example.com   B: https://bank.example.org
+  [a] take A  [b] take B  [t] keep both  [d] drop   Enter = take B
+choice> t
+
+[5/9] differs  Shopping / Store
+  A modified 2026-10-01 09:00, B modified 2026-10-01 04:00
+  differs: title
+  title    A: Store   B: Store (old name)
+  [a] take A  [b] take B  [t] keep both  [d] drop   Enter = take A
+choice> b
+
+[6/9] deleted-in-a  Social / Old account
+  A deleted it on 2026-10-01 12:00; B modified it 2026-10-01 06:00
+  username me
+  url      https://old.example.com
+  [k] keep  [d] drop   Enter = drop
+choice> k
+
+[7/9] deleted-in-b  Social / Stale login
+  B deleted it on 2026-10-01 02:00; A modified it 2026-10-01 08:00
+  username me
+  url      https://social.example.com
+  [k] keep  [d] drop   Enter = keep
+choice>  D 
+
+[8/9] group-differs  group Shopping
+  A modified 2026-10-01 02:00, B modified 2026-10-01 06:00
+  differs: notes
+  [a] take A  [b] take B   Enter = take B
+choice> a
+
+[9/9] settings  database settings
+  differs: name
+  [a] take A  [b] take B   Enter = take A
+choice> b
+
+changes: 9
+  only-a         1   drop 1
+  only-b         2   keep 2
+  differs        2   take-b 1, both 1
+  deleted-in-a   1   keep 1
+  deleted-in-b   1   drop 1
+  group-differs  1   take-a 1
+  settings       1   take-b 1
+Write <out>? [y/N] y

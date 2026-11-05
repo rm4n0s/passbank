@@ -2,6 +2,7 @@ package cli
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/rm4n0s/errors"
@@ -18,6 +19,12 @@ type Terminal interface {
 	IsTerminal() bool
 	// ReadPassword shows prompt and reads a line without echoing it.
 	ReadPassword(prompt string) (secret.Bytes, error)
+	// ReadLine shows prompt and reads a line of text, echoed as it is typed, without
+	// the line break. At the end of the input (Ctrl-D) it returns io.EOF.
+	ReadLine(prompt string) (string, error)
+	// Write shows text to the user on the terminal. The interactive choices use it,
+	// so that stdout stays free for the summary.
+	Write(p []byte) (int, error)
 }
 
 // ttyPath is the controlling terminal of the process.
@@ -62,4 +69,57 @@ func (t *TTY) ReadPassword(prompt string) (secret.Bytes, error) {
 		return secret.Bytes{}, errors.NewErr("PasswordReadFailed", err)
 	}
 	return secret.New(line), nil
+}
+
+// ReadLine writes prompt to the terminal and reads a line. It reads the terminal
+// byte by byte, so that nothing after the line is consumed.
+func (t *TTY) ReadLine(prompt string) (string, error) {
+	f, err := t.open()
+	if err != nil {
+		return "", errors.NewErr("TerminalOpenFailed", err).SetMetadata("path", ttyPath)
+	}
+	defer func() { _ = f.Close() }() // a failed close of a terminal changes nothing for the caller
+	if _, err := fmt.Fprint(f, prompt); err != nil {
+		return "", errors.NewErr("TerminalWriteFailed", err)
+	}
+	var line []byte
+	var b [1]byte
+	for {
+		n, err := f.Read(b[:])
+		if n == 1 {
+			if b[0] == '\n' {
+				return string(line), nil
+			}
+			line = append(line, b[0])
+			if len(line) > maxLineLength {
+				return "", errors.New("LineTooLong", "the line is too long", "limit", maxLineLength)
+			}
+		}
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				if len(line) > 0 {
+					return string(line), nil
+				}
+				return "", io.EOF
+			}
+			return "", errors.NewErr("LineReadFailed", err)
+		}
+	}
+}
+
+// maxLineLength is the longest line ReadLine accepts.
+const maxLineLength = 4096
+
+// Write writes text to the terminal.
+func (t *TTY) Write(p []byte) (int, error) {
+	f, err := t.open()
+	if err != nil {
+		return 0, errors.NewErr("TerminalOpenFailed", err).SetMetadata("path", ttyPath)
+	}
+	defer func() { _ = f.Close() }() // a failed close of a terminal changes nothing for the caller
+	n, err := f.Write(p)
+	if err != nil {
+		return n, errors.NewErr("TerminalWriteFailed", err)
+	}
+	return n, nil
 }

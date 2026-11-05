@@ -208,3 +208,23 @@ func TestRulesOnRealChanges(t *testing.T) {
 		}
 	}
 }
+
+func TestSummary(t *testing.T) {
+	p := New(Input{}, Input{}, []diff.Change{
+		change(diff.OnlyA, 1, 0, 0), change(diff.OnlyA, 1, 0, 0), change(diff.Differs, 1, 2, 0), change(diff.Differs, 3, 2, 0), change(diff.Settings, 1, 1, 0),
+	})
+	p.Choices[1] = Drop
+	p.Choices[3] = Both
+	want := []string{
+		"changes: 5",
+		"  only-a         2   keep 1, drop 1",
+		"  differs        2   take-b 1, both 1",
+		"  settings       1   take-a 1",
+	}
+	if got := p.Summary(); !slices.Equal(got, want) {
+		t.Errorf("summary =\n%q\nwant\n%q", got, want)
+	}
+	if got := New(Input{}, Input{}, nil).Summary(); !slices.Equal(got, []string{"changes: 0"}) {
+		t.Errorf("empty summary = %q", got)
+	}
+}
