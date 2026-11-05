@@ -534,3 +534,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** the 2-second limit of the plan holds for comparing and merging in the core and for the command `diff`; the command `merge` also writes the result and reads it back to verify it (SPEC §5), so it has a limit of 5 seconds. The timing test has the build tag `passbank_large` and runs alone (`scripts/heavy.sh --alone`).
 
+## 8.1 The kit
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-8.1-kit
+- **Summary:** `internal/gui/kit` holds Passbank's own widgets on Glutter's `widgets` layer (no Material): the theme (`Theme`, `LightTheme`, `DarkTheme`, `ThemeScope`, `ThemeOf`, `NewRoot`, spacing and text styles with the Go fonts), `Button` (secondary, primary, danger, disabled; focus ring; Enter and Space), `TextField` (hint, obscure, read only, invalid, trailing widget, own or given controller and focus node), `PasswordField` with a Show/Hide toggle (`LinkButton`), `FileField` (a path and a Choose… button that calls back), `Segmented`, `ListRow` (selection, hover, the Shift and Ctrl held at the tap), `FieldTable` (A and B side by side, differing rows highlighted, protected values masked with a toggle per row that resets when the reset key changes), `Banner` (error, warning, success; live region), `Progress` and `Dialog` (a barrier and a card). Every control is a semantics node with a label, focusable ones with `Focusable` and `Focused`, and the password field says `Obscured`.
+- **Main files:** internal/gui/kit/theme.go, button.go, textfield.go, fields.go, segmented.go, row.go, table.go, feedback.go, keys.go.
+- **Tests:** tap, Enter and Space, disabled; the text field's hint, `OnChanged`, `OnSubmitted` and disposal of what it owns; the password toggle; the file field; segments (tap, disabled); the modifier keys of a row tap; the table's masking, reveal, keeping the reveal for the same item and hiding it for another; no protected value in any semantics label; the banner, progress and dialog; golden images of every widget in both themes and of the dialog in both themes.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method A, `go test ./internal/gui/kit -run TestProofKit -proof` wrote `docs/implemented-proof-images/8.1-kit.png`: every widget in the light and the dark theme.
+- **Manual checks:** none.
+- **Glutter issues:** none yet (a gap in the real window may show in 8.2).
+- **Deviations and follow-ups:** the theme is chosen by the application; following the desktop's light/dark preference is left to 8.6 if Glutter exposes it (`MediaQuery` platform brightness). `Progress` is not animated: it shows a partly filled bar and its caption when the amount is unknown (an animation would keep `PumpAndSettle` from settling in every screen test).
+
