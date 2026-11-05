@@ -145,9 +145,8 @@ Established in step 3.1 from the sources below, in Passbank's own words. Behavio
   - KDBX 4.x supports every cipher and KDF of §4.1 and uses the ChaCha20 inner stream
   - When the encryption settings taken from an input are not possible in the chosen version (for example Argon2 for 3.1), the write is refused with `EncryptionNotInVersion`, and the user picks the defaults or the other input's settings
 - **Encryption settings** (cipher, KDF and its parameters, compression):
-  - default: copied from A, if A is KDBX4
-  - otherwise, the defaults: AES-256, GZip, and Argon2id with 64 MiB of memory, 2 lanes and 10 iterations for KDBX 4; AES-KDF with 2,000,000 rounds for KDBX 3.x and 2.x
-  - the user can pick B's settings instead, or the defaults
+  - default: the defaults of the version: AES-256, GZip, and Argon2id with 64 MiB of memory, 2 lanes and 10 iterations for KDBX 4; AES-KDF with 2,000,000 rounds for KDBX 3.x and 2.x (so that a result is never written with the weak settings of an old input without the user asking, §12 `--encryption`, and the Write screen's "Defaults of the version")
+  - the user can pick A's or B's settings instead
 - **Credentials**: the default is A's credentials, reused from the composite key that unlocked A, so the user doesn't type them again. The user can pick B's instead, or new ones (a password typed twice and/or a key file)
 - **Fresh secrets**: seeds, IVs and the inner stream key are new random values from `crypto/rand` on every write
 - **Safe writing**:

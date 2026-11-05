@@ -626,3 +626,41 @@ history          2
 - **Manual checks:** a pass with a real screen reader (Orca) is added to docs/MANUAL-CHECKS.md: the semantics are tested here, what Orca says is not.
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** the text scale tested is Glutter's `TextScaleFactor`, which is what a desktop's "large text" setting sets; a window scale of 200 % (`DevicePixelRatio`) only makes everything bigger and changes no layout.
+
+## 9.1 Release builds and the README
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-9.1-release
+- **Summary:** `README.md` says what Passbank does and does not do, how to install both programs, shows the command line with examples (info, diff, merge with a plan, with a rule, interactively, with a version and encryption), the three screens of the GUI, what gets merged, the compatibility with KeePassXC, the security statement of SPEC §14 (including that secrets may reach swap or a core dump) and how to run the checks. `--version` of both programs prints the module version and the commit (`internal/version`, built in step 1.4, tested in `internal/version` and in the CLI and GUI argument tests). SPEC §5 now says what §12, the CLI and the GUI always did: the encryption of the new database is the defaults of its version unless the user asks for A's or B's.
+- **Release builds:** `go build ./cmd/passbank` and `go build -tags glutter_release ./cmd/passbank-gui`, and `go test -tags glutter_release ./internal/gui/app` (the debug flags are absent). Both are run through `scripts/heavy.sh` in "Checks" below.
+- **Checks:** (filled in when the checks pass)
+- **Manual checks:** step 9.2's, in docs/MANUAL-CHECKS.md.
+- **Glutter issues:** none.
+
+### Coverage of the specification
+
+Status is "done" when the code does what the section says and a test shows it, "partial" with what is missing. Checked against the code on 2026-11-05.
+
+| SPEC | Built by | Main tests | Status |
+|---|---|---|---|
+| §1 Purpose, §2 Goals and non-goals | all steps | the end-to-end merges (7.6), the round trips (4.4, 5.3), the GUI flow (8.6) | done |
+| §3 Terms | 1.1 | n/a | done |
+| §4.1 Supported formats | 2.2, 2.5, 2.6, 3.2, 3.3 | 27 fixtures (KDBX 4 and 3.1) through `Open` in every cipher, KDF and compression; KeePassXC and pykeepass dumps | done. KDBX 2.0 and 3.0 files from other programs were not available; they go through the same reader as 3.1 and are tested by what Passbank writes |
+| §4.2 Credentials | 2.3, 2.8, 8.2 | every key file format, the composite key, wrong credentials, the empty password | done |
+| §4.3 Integrity | 2.5, 3.2 | header hash and HMAC checks, wrong credentials never reported as corruption, damaged files | done |
+| §4.4 Preservation | 2.6, 3.3, 4.1 | random databases with unknown XML, custom data and history written and read back (4.4, 5.3) | done |
+| §4.5 KDBX 2.x and 3.x | 3.1, 3.2, 3.3, 5.2 | sixteen real 3.1 files with header hashes, written files read back in 3.1, 3.0 and 2.0, KeePassXC opens 3.1 | done |
+| §5 Writing | 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3, 8.5 | every version, cipher and KDF, losses refused without consent, safe output (no replace, no input as output, no temporary file left), verification | done |
+| §6 Data model | 2.1 | `model` and `modeltest` | done |
+| §7 Matching | 6.1 | pairing by UUID, roots always paired | done |
+| §8 Comparison and changes | 6.2 | every kind, stable order, field names never hold values | done |
+| §9 Choices and rules | 6.3, 8.3 | defaults, rules, allowed choices per kind; the list's keys and bulk rules | done |
+| §10 Applying a plan | 7.1, 7.2, 7.3 | the tree, history, deleted objects, meta, attachments, group conflicts and cycles, written and opened again | done |
+| §11 Plan file | 6.4, 6.5, 8.4 | write, read, every error, fuzzing, files for the CLI and the GUI (`plan.ReadFile`, `WriteFile`) | done |
+| §12 Command-line tool | 1.4, 2.8, 6.5, 7.4, 7.5, 7.6 | goldens of every command, errors with route tests, the interactive review, KeePassXC opens the results | partial: the password prompt and the interactive review on a real terminal are manual checks (docs/MANUAL-CHECKS.md 2.8 and 7.5) |
+| §13 Desktop application | 8.1 to 8.7 | widget tests of every screen, goldens in both themes and at 200 % text, a full flow with taps and keys, display tests in a headless compositor | partial: no input was sent to a real window (no tool for it), and the portal file dialog and Orca are manual checks (8.2, 8.7) |
+| §14 Security | 1.3, all | secret buffers wiped (tests), no secret in errors, logs, plans, labels or goldens (tests), no network, bounded allocations, fuzzers for every parser | done. Secrets may reach swap, as the README says |
+| §15 User-facing errors | all | every tag has a route test (`scripts/error-tags.sh --untested` prints nothing) and a message test | done |
+| §16 Packages | 1.2 | `internal/archtest` | done |
+| §17 Testing | all | as above | done |
+| §18 Milestones, §19 Decisions | 1.1 | n/a | done |
