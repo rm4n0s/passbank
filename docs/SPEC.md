@@ -383,7 +383,9 @@ Built on Glutter's `widgets` layer, without Material. One window, three screens:
    - the attachments, marked same or different
    - both last modification times
 
-   The choice is set with buttons (Take A, Take B, Keep both, Keep, Drop, enabled per kind) or the keys `A`, `B`, `K` (keep or keep both), `D` (drop) and `N` (newer). The keys work on every selected row. Bulk actions apply the rules of section 9. **Load plan** and **Save plan** use the plan file of section 11.
+   The choice is set with buttons (Take A, Take B, Keep both, Keep, Drop, enabled per kind) or the keys `A`, `B`, `K` (keep or keep both), `D` (drop) and `N` (newer). The keys work on every selected row, and on a row whose kind has no such choice they do nothing (`K` and `D` on a group or settings change). `A` and `B` mean "A wins" and "B wins": Take A or Take B where the kind has them, else the rule of section 9 (`A` on an entry only B has drops it). `N` gives the default of section 8. Bulk actions apply the rules of section 9 to the rows the filter and the search show (not only the selected ones). **Load plan** and **Save plan** use the plan file of section 11.
+
+   A change is **undecided** until the user sets its choice (by a key, a button or a bulk action) or loads a plan; until then it holds its default of section 8, which the list shows in a lighter text. The "undecided" filter lists those changes, and a change leaves it as soon as it is decided. The list keeps the cursor on its row, so the next change slides under it and a run of keys goes down the list. Selecting works with the mouse (Shift extends from the anchor, Ctrl adds or removes a row) and the keyboard (arrows, Page Up and Down, Home and End, with Shift to extend; Ctrl+A selects all shown rows; Escape selects none). The list builds only the rows in view, so it stays fast with 10,000 changes.
 3. **Write**:
    - the output path (`desktop.SaveFile`)
    - the output version (default KDBX 4), the settings source, the credentials (A's, B's or new) and the encryption source

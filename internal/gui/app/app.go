@@ -13,6 +13,7 @@ import (
 	"github.com/rm4n0s/passbank/internal/gui/kit"
 	"github.com/rm4n0s/passbank/internal/gui/kit/fonts"
 	"github.com/rm4n0s/passbank/internal/gui/open"
+	"github.com/rm4n0s/passbank/internal/gui/review"
 	"github.com/rm4n0s/passbank/internal/gui/session"
 )
 
@@ -106,7 +107,7 @@ func (s *appState) page(bc widgets.BuildContext) widgets.Widget {
 	var body widgets.Widget
 	switch s.screen {
 	case screenReview:
-		body = placeholder("Review", func() { s.goTo(screenWrite) }, func() { s.sess.Wipe(); s.goTo(screenOpen) })
+		body = review.NewScreen(s.sess, func() { s.sess.Wipe(); s.goTo(screenOpen) }, func() { s.goTo(screenWrite) })
 	case screenWrite:
 		body = placeholder("Write", nil, func() { s.goTo(screenReview) })
 	default:

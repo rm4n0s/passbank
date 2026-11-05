@@ -83,6 +83,10 @@ type Session struct {
 	A, B *Source
 	// Plan is the user's choices; nil until the Review screen starts.
 	Plan *plan.Plan
+	// Decided[i] says that the user has chosen for Plan.Changes[i] (or loaded a plan
+	// that does); the others still hold their default. The Review screen's
+	// "undecided" filter lists those.
+	Decided []bool
 }
 
 // New returns an empty session.
@@ -94,25 +98,30 @@ func (s *Session) Ready() bool { return s.A != nil && s.B != nil }
 // Swap exchanges A and B. The plan was made for the old order, so it is dropped.
 func (s *Session) Swap() {
 	s.A, s.B = s.B, s.A
-	s.Plan = nil
+	s.dropPlan()
 }
 
 // SetA unlocks side A with a source, wiping the one it replaces; the plan is
 // dropped, because it fitted the old one.
 func (s *Session) SetA(src *Source) {
 	s.A.Wipe()
-	s.A, s.Plan = src, nil
+	s.A = src
+	s.dropPlan()
 }
 
 // SetB is SetA for side B.
 func (s *Session) SetB(src *Source) {
 	s.B.Wipe()
-	s.B, s.Plan = src, nil
+	s.B = src
+	s.dropPlan()
 }
 
 // Wipe overwrites every secret of the session and empties it.
 func (s *Session) Wipe() {
 	s.A.Wipe()
 	s.B.Wipe()
-	s.A, s.B, s.Plan = nil, nil, nil
+	s.A, s.B = nil, nil
+	s.dropPlan()
 }
+
+func (s *Session) dropPlan() { s.Plan, s.Decided = nil, nil }

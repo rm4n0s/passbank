@@ -560,3 +560,16 @@ history          2
 - **Glutter issues:** none. (`FakeDesktop()` makes a new fake on every call, so a test keeps the one it got; that is how it is documented to work.)
 - **Deviations and follow-ups:** the GUI shows the file name, not the whole path, in its error messages. Review and Write are placeholders in the app until 8.3 to 8.5.
 
+## 8.3 The Review screen: the list
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-8.3-review-list
+- **Summary:** the left side of the Review screen (`internal/gui/review`). `Model` (no Glutter) holds the plan being edited, which changes the user has decided (`session.Session.Decided`, kept with the plan so Back from Write keeps it), the filter (all, one kind, undecided only), the search over group path and title, the selection (click, Shift, Ctrl, arrows, Page, Home, End, Ctrl+A, Escape) and the actions: keys `A B K D N` on the selected rows, and the rules of SPEC §9 on the rows shown. `List` shows the filter chips with counts, the search field, the four rule buttons and a lazily built list (fixed row height, so only the rows in view are built) of rows with kind, group path, title and choice (decided choices bold, defaults light). `Screen` compares the two databases off the UI thread, creates the plan in the session, shows the list and, for now, the kind, choice and differing fields of the change under the cursor on the right (the side-by-side table is 8.4), with Back and Next. `kit.Chip` is new. The app's Review placeholder is gone. SPEC §13 now defines "undecided", what `A` and `B` do on one-sided rows, and the selection keys.
+- **Main files:** internal/gui/review/model.go, list.go, screen.go; internal/gui/kit/chip.go; internal/gui/session/session.go; internal/gui/app/app.go.
+- **Tests:** the model (filters, counts, search, every selection gesture, every action on every kind, rules on the rows shown, the undecided filter advancing the cursor, loaded plans); the screen (the list and counts, no databases, mouse selection with Shift and Ctrl, each key, a key on many rows, arrows, filter chips, search, "no match", undecided only, typing in the search field does not choose, bulk rules, choices kept when the screen comes back, buttons, equal databases); the chip (tap, Enter, Space, goldens); 10,000 changes; goldens of the screen in both themes.
+- **Timing:** `modeltest.LargePair(50000)` gives 10,805 changes. On this machine (30 GB, 32 CPUs): comparing and showing the first screen 158 ms; End key 12 ms; typing a search 7 ms; a rule on all rows 5 ms; only the rows in view are built (at most 60 of 10,805). The test's bound is 5 s per step.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method A, `go test ./internal/gui/review -run TestScreenGolden -proof` wrote `docs/implemented-proof-images/8.3-review-list.png`: the merge fixture pair's nine changes with mixed choices and five rows selected.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the details pane is a stand-in until 8.4. The keys work when the list has the keyboard focus (a click on a row gives it); typing in the search field never reaches them.
