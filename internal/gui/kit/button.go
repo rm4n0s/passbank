@@ -124,7 +124,12 @@ func (s *buttonState) Build(bc widgets.BuildContext) widgets.Widget {
 		OnEnter: func(*gestures.PointerEnterEvent) { s.SetState(func() { s.hovered = true }) },
 		OnExit:  func(*gestures.PointerExitEvent) { s.SetState(func() { s.hovered = false; s.pressed = false }) },
 	})
+	focusLabel := b.opts.SemanticsLabel
+	if focusLabel == "" {
+		focusLabel = b.label
+	}
 	focus := widgets.NewFocus(tap, widgets.FocusOpts{
+		DebugLabel:      focusLabel,
 		Autofocus:       b.opts.Autofocus,
 		CanRequestFocus: foundation.Some(enabled),
 		OnFocusChange:   func(has bool) { s.SetState(func() { s.focused = has }) },

@@ -91,6 +91,7 @@ func (s *linkButtonState) Build(bc widgets.BuildContext) widgets.Widget {
 		}
 	}})
 	w = widgets.NewFocus(w, widgets.FocusOpts{
+		DebugLabel:       l.semantics,
 		CanRequestFocus:  foundation.Some(enabled),
 		OnFocusChange:    func(has bool) { s.SetState(func() { s.focused = has }) },
 		OnKeyEvent:       activateOnEnterOrSpace(l.onTap),

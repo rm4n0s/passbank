@@ -117,6 +117,7 @@ func (s *segmentState) Build(bc widgets.BuildContext) widgets.Widget {
 		OnExit:  func(*gestures.PointerExitEvent) { s.SetState(func() { s.hovered = false }) },
 	})
 	w = widgets.NewFocus(w, widgets.FocusOpts{
+		DebugLabel:       v.group + ": " + v.segment.Label,
 		CanRequestFocus:  foundation.Some(enabled),
 		OnFocusChange:    func(has bool) { s.SetState(func() { s.focused = has }) },
 		OnKeyEvent:       activateOnEnterOrSpace(pick),

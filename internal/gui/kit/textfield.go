@@ -76,7 +76,7 @@ func (s *textFieldState) InitState() {
 	}
 	s.focus, s.ownFocus = o.FocusNode, o.FocusNode == nil
 	if s.focus == nil {
-		s.focus = widgets.NewFocusNode()
+		s.focus = widgets.NewFocusNode(widgets.FocusNodeOpts{DebugLabel: s.Widget().label})
 	}
 	s.listener = s.controller.AddListener(func() { s.SetState(func() {}) })
 }
@@ -101,7 +101,7 @@ func (s *textFieldState) DidUpdateWidget(old *TextField) {
 		}
 		s.focus, s.ownFocus = o.FocusNode, o.FocusNode == nil
 		if s.focus == nil {
-			s.focus = widgets.NewFocusNode()
+			s.focus = widgets.NewFocusNode(widgets.FocusNodeOpts{DebugLabel: s.Widget().label})
 		}
 	}
 }

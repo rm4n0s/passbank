@@ -28,15 +28,14 @@ const (
 
 // Run opens the window and runs the application until the window is closed or
 // ctx ends. It must be called on the main goroutine.
-func Run(ctx context.Context) error {
-	err := widgets.RunAppContext(ctx, NewApp(), widgets.RunAppOpts{
-		AppID: AppID,
-		Window: widgets.WindowConfig{
-			Title:   Title,
-			Size:    ui.Size{Width: 1100, Height: 720},
-			MinSize: ui.Size{Width: 640, Height: 480},
-		},
-		Fonts: fonts.Sources(),
+func Run(ctx context.Context) error { return RunWith(ctx, DevOptions{}) }
+
+// RunWith is Run with the databases of a debug build's --dev flags preloaded.
+func RunWith(ctx context.Context, dev DevOptions) error {
+	err := widgets.RunAppContext(ctx, NewAppWith(dev), widgets.RunAppOpts{
+		AppID:  AppID,
+		Window: windowConfig(),
+		Fonts:  fonts.Sources(),
 	})
 	if err != nil {
 		return errors.NewErr("AppRunFailed", err)
@@ -44,15 +43,34 @@ func Run(ctx context.Context) error {
 	return nil
 }
 
+// windowConfig is the window of the application: its title, its first size and the
+// smallest size it can be given.
+func windowConfig() widgets.WindowConfig {
+	return widgets.WindowConfig{
+		Title:   Title,
+		Size:    ui.Size{Width: 1100, Height: 720},
+		MinSize: ui.Size{Width: 640, Height: 480},
+	}
+}
+
 // App is the root widget: a WidgetsApp, without Material, whose home is the screen
 // the user is on. It owns the session and wipes it when it goes.
 type App struct {
 	widgets.StatefulWidget
+	dev DevOptions
 }
 
 // NewApp returns the root widget of the application.
 func NewApp(opts ...widgets.WidgetOpts) *App {
 	return &App{StatefulWidget: widgets.NewStatefulWidgetBase(opts...)}
+}
+
+// NewAppWith returns the root widget with the databases of the debug flags
+// preloaded: when both open, the application starts on the Review screen.
+func NewAppWith(dev DevOptions, opts ...widgets.WidgetOpts) *App {
+	a := NewApp(opts...)
+	a.dev = dev
+	return a
 }
 
 // CreateState makes the state of the application.
@@ -73,7 +91,12 @@ type appState struct {
 	screen screen
 }
 
-func (s *appState) InitState() { s.sess = session.New() }
+func (s *appState) InitState() {
+	s.sess = session.New()
+	if dev := s.Widget().dev; dev.Complete() {
+		s.preload(dev)
+	}
+}
 
 // Dispose drops every unlocked database and its secrets (SPEC §13: closing the window).
 func (s *appState) Dispose() { s.sess.Wipe() }

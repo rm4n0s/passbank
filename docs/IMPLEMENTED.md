@@ -599,3 +599,17 @@ history          2
 - **Manual checks:** none.
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** the typed passwords live in the field controllers as Go strings, which cannot be wiped; they are cleared when the screen goes. The screen shows the file name, not the whole path, in its messages, like the Open screen.
+
+## 8.6 The full flow
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-8.6-full-flow
+- **Summary:** the three screens work together. Debug builds take `--dev-a`, `--dev-b` and `--dev-password-file` (`internal/gui/app/devflags_debug.go`; `devflags_release.go` registers nothing under `glutter_release`): both fixtures are unlocked off the UI thread and the application starts on Review (`NewAppWith`, `RunWith`). The password file has A's password on the first line and B's on the second (`internal/cli/testdata/merge/password.txt`, the passwords of the merge fixtures). The window (`windowConfig`) is "Passbank", `dev.rm4n0s.Passbank`, 1100 by 720, minimum 640 by 480. Every focusable kit control has a debug label for the focus order; the Open panels are traversal groups, so Tab goes through A's panel and then B's.
+- **Main files:** internal/gui/app/dev.go, devflags_debug.go, devflags_release.go, app.go, main.go; internal/gui/open/screen.go; internal/cli/testdata/merge/password.txt.
+- **Tests:** the password file (two lines, one, CRLF, extra lines, no final newline, empty, missing, with their route); the flags in a debug build (together, in the help, none takes a password) and in a release build (`go test -tags glutter_release ./internal/gui/app`: refused, not in the help); preload starts on Review, a failed preload (missing password file, wrong password) stays on Open with nothing kept; **the full flow with taps and keys**: choose B for "My bank", Next, type the path, Write, the file opens with A's password and holds B's password for that entry, the inputs are untouched, Back keeps the choice, Back again drops the databases; the Tab order of the Open, Review and Write screens; the window configuration. Display tests (`-tags passbank_display`, in the headless compositor): the real window has the title and a size not below the minimum, and the saved screenshot of the preloaded application is not blank.
+- **Display tests:** `scripts/heavy.sh --alone -- scripts/headless-wayland.sh -- go test -race -tags passbank_display ./internal/gui/app` (see "Checks").
+- **Checks:** (filled in when the checks pass)
+- **Proof:** method B, `scripts/proof.sh docs/implemented-proof-images/8.6-flow.png --after 2s -- --dev-a internal/cli/testdata/merge/a.kdbx --dev-b internal/cli/testdata/merge/b.kdbx --dev-password-file internal/cli/testdata/merge/password.txt`: the Review screen with the fixture changes.
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** the step asks to drive the screens "in a real window"; there is no tool that sends input to a Wayland window here (no `wtype` or `ydotool`, and Glutter has no way to inject input into a real window). So the input-driven flow runs on gluttertest's fake platform (the same widgets and the same code), and the real window is checked for its title, size and what it paints. `Compare` and `Write` take no focus while they cannot act.

@@ -287,8 +287,10 @@ func (s *screenState) panelView(bc widgets.BuildContext, i int) widgets.Widget {
 			BorderRadius: painting.NewBorderRadiusCircular(kit.Radius * 2),
 		}),
 	})
-	// A file dropped on the panel sets its path.
-	return widgets.NewDragTarget(func(widgets.BuildContext, []foundation.Opt[*widgets.ExternalDragData], []any) widgets.Widget {
+	// A file dropped on the panel sets its path. Each panel is its own traversal
+	// group, so that Tab visits all of A's controls and then all of B's, instead of
+	// going across the two panels row by row.
+	return widgets.NewFocusTraversalGroup(widgets.NewDragTarget(func(widgets.BuildContext, []foundation.Opt[*widgets.ExternalDragData], []any) widgets.Widget {
 		return card
 	}, widgets.DragTargetOpts[*widgets.ExternalDragData]{
 		OnWillAcceptWithDetails: func(d widgets.DragTargetDetails[*widgets.ExternalDragData]) bool {
@@ -305,7 +307,7 @@ func (s *screenState) panelView(bc widgets.BuildContext, i int) widgets.Widget {
 				}
 			}
 		},
-	})
+	}))
 }
 
 // TextH2 is the style of a panel's heading.

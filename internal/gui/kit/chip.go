@@ -87,6 +87,7 @@ func (s *chipState) Build(bc widgets.BuildContext) widgets.Widget {
 		OnExit:  func(*gestures.PointerExitEvent) { s.SetState(func() { s.hovered = false }) },
 	})
 	w = widgets.NewFocus(w, widgets.FocusOpts{
+		DebugLabel:       c.label,
 		Autofocus:        c.opts.Autofocus,
 		CanRequestFocus:  foundation.Some(c.onToggle != nil),
 		OnFocusChange:    func(has bool) { s.SetState(func() { s.focused = has }) },

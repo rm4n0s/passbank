@@ -18,6 +18,7 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("passbank-gui", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	showVersion := fs.Bool("version", false, "print the version and exit")
+	devOptions := addDevFlags(fs)
 	fs.Usage = func() {
 		// The help goes to stderr, where a failure to write has nowhere else to be reported.
 		_, _ = fmt.Fprint(stderr, "passbank-gui merges two KeePass databases into a new one.\n\nusage: passbank-gui [--version] [--help]\n")
@@ -41,7 +42,12 @@ func Main(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	}
-	if err := Run(ctx); err != nil {
+	dev := devOptions()
+	if dev.Active() && !dev.Complete() {
+		_, _ = fmt.Fprintln(stderr, "passbank-gui: --dev-a, --dev-b and --dev-password-file go together")
+		return 2
+	}
+	if err := RunWith(ctx, dev); err != nil {
 		slog.New(slog.NewTextHandler(stderr, nil)).Error("passbank-gui failed", "err", err)
 		return 1
 	}

@@ -67,7 +67,7 @@ func TestRunFailsWithoutADisplay(t *testing.T) {
 	if err == nil {
 		t.Fatal("Run must fail when there is no display")
 	}
-	assertRoute(t, err, "Run.AppRunFailed")
+	assertRoute(t, err, "RunWith.AppRunFailed")
 }
 
 func unlockFixture(t *testing.T, name string) *session.Source {
