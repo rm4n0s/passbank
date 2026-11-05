@@ -494,3 +494,16 @@ history          2
 - **Glutter issues:** none.
 - **Deviations and follow-ups:** the plan's wording "naming the group and one kept item" is met with UUIDs plus path and title in the metadata (a title is not a secret, but the CLI prints UUIDs and paths only when the user asks with `--debug`).
 
+## 7.4 `passbank merge`
+
+- **Date:** 2026-11-05
+- **Branch:** feat/step-7.4-merge-command
+- **Summary:** `passbank merge A B -o OUT [--plan PLAN | --prefer newer|a|b|union] [--format 4|4.1|4.0|3.1|3.0|2] [--allow-loss] [--force] [--settings-from a|b] [--credentials a|b|new] [--encryption a|b|default]` with the credential options of A, B and the output (`--keyfile-out`, `--password-file-out`, `--no-password-out`, or a new password asked twice on the terminal). It opens both inputs, takes the choices from the plan file (`plan.Read`) or the rule, applies them (`merge.Apply`), picks the version (`4` is 4.0, or 4.1 when the result needs it), and writes through `output.Write` (new file only, never one of the inputs, `--force` to replace, `--allow-loss` for the losses of lower versions). The summary on stdout counts each kind by choice, the groups and entries of the result, the accepted losses and the file written. Without `--plan` and `--prefer` it is a usage error until 7.5. The error messages of SPEC §15 for the plan, merge and output tags are in `errors.go`.
+- **Main files:** internal/cli/merge.go, internal/cli/credentials.go (`confirm`, `readNewPassword`), internal/cli/errors.go.
+- **Tests:** goldens of the summary and of the entries (with passwords, URLs, notes and history length) for `newer`, `a`, `b`, `union` and `--settings-from b` on the merge fixture pair, with the result opened and the inputs checked unmodified, no temporary file left and no secret in the output; `diff` then a hand-edited plan then `merge` (an unedited plan equals `--prefer newer`); every format (the version of the file read back); losses (4 becomes 4.1, 3.1 refuses with the list and writes nothing, `--allow-loss` writes and lists them); credentials (A's, B's, a new password from a file or asked twice, key file only, both, mismatch, no terminal, nothing); encryption (A's, B's, the defaults of 4 and 3.1, `EncryptionNotInVersion`); the output rules (existing, `--force`, an input, a missing folder); six plan errors and a missing plan file with their tags; a plan that drops a group but keeps its entry, then the fix; 13 usage errors; wrong passwords of A and B; route tests for `readPlanFile` and `PasswordsDoNotMatch`.
+- **Checks:** (filled in when the checks pass)
+- **Proof:** none (the goldens of 7.5 are the proof of the merge).
+- **Manual checks:** none.
+- **Glutter issues:** none.
+- **Deviations and follow-ups:** `--credentials` defaults to `a` and `--encryption` to `default`, which SPEC §12 did not say (now it does). New tag in SPEC §15: `PlanFileReadFailed`.
+

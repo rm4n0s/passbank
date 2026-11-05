@@ -25,8 +25,10 @@ type credentialOptions struct {
 	passwordFile string
 	noPassword   bool
 	// suffix is "" for a command with one database, and "-a" or "-b" for the inputs
-	// of the others; it is only used in messages.
+	// of the others, "-out" for a new database; it is only used in messages.
 	suffix string
+	// confirm is set for a new password: it is asked twice.
+	confirm bool
 }
 
 // addCredentialFlags registers the credential options for a database on fs.
@@ -71,7 +73,11 @@ func (o *credentialOptions) load(ctx context.Context, e env, name string) (crypt
 			c.Wipe()
 			return crypto.Credentials{}, errors.New("PasswordNeedsTerminal", "there is no terminal to ask for the password; use --password-file"+o.suffix+" or --no-password"+o.suffix, "database", name)
 		}
-		password, err = e.term.ReadPassword("Password for " + name + ": ")
+		if o.confirm {
+			password, err = o.readNewPassword(e, name)
+		} else {
+			password, err = e.term.ReadPassword("Password for " + name + ": ")
+		}
 	}
 	if err != nil {
 		c.Wipe()
@@ -82,6 +88,26 @@ func (o *credentialOptions) load(ctx context.Context, e env, name string) (crypt
 	}
 	c.HasPassword, c.Password = true, password
 	return c, nil
+}
+
+// readNewPassword asks for a new password twice on the terminal; the two must be
+// equal (PasswordsDoNotMatch).
+func (o *credentialOptions) readNewPassword(e env, name string) (secret.Bytes, error) {
+	first, err := e.term.ReadPassword("New password for " + name + ": ")
+	if err != nil {
+		return secret.Bytes{}, err
+	}
+	second, err := e.term.ReadPassword("Repeat the new password: ")
+	if err != nil {
+		first.Wipe()
+		return secret.Bytes{}, err
+	}
+	defer second.Wipe()
+	if !first.Equal(second) {
+		first.Wipe()
+		return secret.Bytes{}, errors.New("PasswordsDoNotMatch", "the two passwords are not the same", "database", name)
+	}
+	return first, nil
 }
 
 // readPasswordFile reads the first line of a file as a password. The file must be

@@ -35,11 +35,12 @@ type command struct {
 	run     func(ctx context.Context, e env, args []string) int
 }
 
-// commands returns the subcommands by name. Step 7.4 adds merge.
+// commands returns the subcommands by name.
 func commands() map[string]command {
 	return map[string]command{
-		"diff": {summary: "compare two databases and write a plan of what to keep", run: runDiff},
-		"info": {summary: "show how a database is stored and what it holds", run: runInfo},
+		"diff":  {summary: "compare two databases and write a plan of what to keep", run: runDiff},
+		"merge": {summary: "merge two databases into a new one", run: runMerge},
+		"info":  {summary: "show how a database is stored and what it holds", run: runInfo},
 	}
 }
 

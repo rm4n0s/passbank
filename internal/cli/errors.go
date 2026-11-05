@@ -62,6 +62,47 @@ func userMessage(e *errors.Error, file string) string {
 		return fmt.Sprintf("%s cannot be read: %v", file, e.OriginalErr)
 	case "ReadCancelled", "KdfCancelled":
 		return "cancelled"
+	case "PlanStale":
+		return fmt.Sprintf("the plan was not made for these databases: input %v has changed since", e.Metadata["input"])
+	case "PlanIncomplete":
+		return fmt.Sprintf("the plan has no choice for %v changes, for instance %v", e.Metadata["missing"], e.Metadata["first"])
+	case "PlanUnknownItem":
+		return fmt.Sprintf("the plan, line %v: %v is not a change between these databases", e.Metadata["line"], e.Metadata["item"])
+	case "PlanInvalidChoice":
+		return fmt.Sprintf("the plan, line %v: %v is not allowed for a change of kind %v", e.Metadata["line"], e.Metadata["choice"], e.Metadata["kind"])
+	case "PlanDuplicateItem":
+		return fmt.Sprintf("the plan, line %v: %v has more than one line", e.Metadata["line"], e.Metadata["item"])
+	case "PlanSyntax":
+		return fmt.Sprintf("the plan, line %v: %s", e.Metadata["line"], e.Message)
+	case "PlanMismatch":
+		return "the plan was not made for these databases"
+	case "PlanGroupNotEmpty":
+		return fmt.Sprintf("the group %q is dropped, but %q in it is kept (%v items in dropped groups are kept); drop them too or keep the group",
+			e.Metadata["group path"], e.Metadata["item title"], e.Metadata["conflicts"])
+	case "MergeGroupCycle":
+		return fmt.Sprintf("the choices would put the group %v inside itself; take the place of one of the groups from A", e.Metadata["group"])
+	case "PlanFileReadFailed":
+		return fmt.Sprintf("%s cannot be read: %v", file, e.OriginalErr)
+	case "OutputExists":
+		return fmt.Sprintf("%s exists; use --force to replace it", file)
+	case "OutputIsInput":
+		return "the output must be a new file, not one of the inputs"
+	case "OutputVersionLosesData":
+		return fmt.Sprintf("KDBX %v cannot store everything in the result (%v items would lose data); choose --format 4 or accept the loss with --allow-loss: %v",
+			e.Metadata["version"], e.Metadata["count"], e.Metadata["losses"])
+	case "EncryptionNotInVersion":
+		return e.Message
+	case "WriteVerifyFailed":
+		return "the written file did not read back correctly and was removed (this is a bug in Passbank)"
+	case "OutputPathInvalid", "OutputTempFailed", "OutputWriteFailed", "OutputPlaceFailed", "OutputSyncFailed":
+		if e.OriginalErr == nil {
+			return fmt.Sprintf("%s cannot be written: %s", file, e.Message)
+		}
+		return fmt.Sprintf("%s cannot be written: %v", file, e.OriginalErr)
+	case "WriteCancelled":
+		return "cancelled"
+	case "PasswordsDoNotMatch":
+		return "the two passwords are not the same"
 	case "PlanFileWriteFailed":
 		return fmt.Sprintf("%s cannot be written: %v", file, e.OriginalErr)
 	case "KeyFileCorrupt":

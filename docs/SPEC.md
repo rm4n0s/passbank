@@ -320,7 +320,7 @@ passbank info  FILE
 ```
 
 - **`diff`**: unlocks A and B and writes a plan with the defaults (or the given rule) to `PLAN`, or to stdout. The user edits the plan, then runs `merge --plan`
-- **`merge`**: builds and writes the result. With `--plan` or `--prefer` it runs without questions. With neither, it is **interactive** (section 12.1). `--format` picks the output version and defaults to `4` (4.0, or 4.1 when needed, as in §5); `--allow-loss` accepts the losses that a lower version causes. It prints a summary: the counts of each kind and choice, the output path and the format version
+- **`merge`**: builds and writes the result. `--credentials` defaults to `a` (the new database opens with the credentials of A), `--encryption` to `default` (AES-256, GZip, and Argon2id with 64 MiB for KDBX 4 or the AES-KDF with 2,000,000 rounds for 2.x and 3.x); `a` and `b` copy the cipher, KDF with its parameters and compression of that input (`EncryptionNotInVersion` when the chosen version cannot hold them). `--settings-from a|b` sets the choice of the `settings` change, whatever the plan or rule says. The output is never one of the inputs, and an existing output is replaced only with `--force`. With `--plan` or `--prefer` it runs without questions. With neither, it is **interactive** (section 12.1). `--format` picks the output version and defaults to `4` (4.0, or 4.1 when needed, as in §5); `--allow-loss` accepts the losses that a lower version causes. It prints a summary: the counts of each kind and choice, the output path and the format version
 - **`info`**: prints a file's KDBX version, cipher, KDF and its parameters, compression, and counts of groups, entries, attachments and history items. It needs the credentials, because the counts are inside the encrypted part
 - **Credentials**, for each input X (`a`, `b`) and for `out` when `--credentials new`:
   - `--keyfile-X PATH`
@@ -329,6 +329,7 @@ passbank info  FILE
   - otherwise the password is read without echo from `/dev/tty`; a new output password is asked twice
   - an empty password (typed, or the first line of the password file) is not a password component, as in KeePassXC; with no key file either, the command fails with `NoCredentials`
   - `--no-password-X` together with `--password-file-X` is a mistake in the arguments (`UsageInvalid`, exit status 2)
+  - `--keyfile-out`, `--password-file-out` and `--no-password-out` need `--credentials new`
 - **Errors**: a failed command prints one line, `passbank <command>: <message>` (the messages of section 15), and exits with status 1; a mistake in the arguments exits with 2 and adds the usage line. `--debug` adds the tag, the route and the metadata of the error (never a secret)
   - if there is no terminal, the error is `PasswordNeedsTerminal`
   - passwords are never accepted as arguments or environment variables
@@ -419,6 +420,7 @@ Each failure has a Tag (see CLAUDE.md, "Error handling") and a message for the u
 | `PlanStale`, `PlanIncomplete`, `PlanUnknownItem`, `PlanInvalidChoice`, `PlanDuplicateItem`, `PlanSyntax`, `PlanGroupNotEmpty` | what is wrong, with the line or item |
 | `PlanMismatch`, `MergeGroupCycle` | "the plan was not made for these databases"; "the choices would put <group> inside itself; take the place of one of the groups from A" |
 | `PlanReadFailed`, `PlanWriteFailed`, `PlanInconsistent` | "the plan cannot be read or written: <cause>"; `PlanInconsistent` is a bug (a plan with a different number of choices and changes) |
+| `PlanFileReadFailed` | "<plan> cannot be read: <cause>" |
 | `PlanFileExists`, `PlanFileWriteFailed`, `PlanOutputIsInput` | "<plan> exists; use --force to replace it"; "<plan> cannot be written: <cause>"; "the plan file must not be one of the databases" |
 | `ChoicesNeedTerminal` | "There is no terminal to ask for choices; use --plan or --prefer" |
 | `OutputExists` | "<out> exists; use --force to replace it" |

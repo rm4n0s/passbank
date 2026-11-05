@@ -1,0 +1,12 @@
+name=Laptop
+entry Banking/My bank  password=bank-password-b url=https://bank.example.org history=1
+entry Email/Personal  password=pw-personal url=https://mail.example.com history=0
+entry Email/Work mail  password=pw-work-mail url=https://mail.work.example history=0
+entry Games/Old forum  password=forum-password url=https://forum.example.com history=0
+entry Shopping/Store  password=store-password url=https://store.example.com history=1
+entry Social/Stale login  password=stale-password url=https://social.example.com history=0
+group Banking/  notes=
+group Email/  notes=
+group Games/  notes=
+group Shopping/  notes=Ship to the office
+group Social/  notes=
