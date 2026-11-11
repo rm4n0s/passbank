@@ -17,7 +17,7 @@ Everything that decides the result (reading and writing KDBX, matching, comparin
 
 ## Commands
 - Build: `go build ./...`. Passbank is cgo-free; `CGO_ENABLED=0 go build ./...` must always work
-- Test all: `go test -race ./...` (the race detector needs cgo, so this one needs a C compiler)
+- Test all: `go test -race -tags debug_mode ./...` (the race detector needs cgo, so this one needs a C compiler). `-tags debug_mode` makes a debug build of Glutter and of the GUI's debug flags; since Glutter 1.17 a build without tags is a release build, which the cgo-free run below tests
 - Test the cgo-free path: `CGO_ENABLED=0 go test ./...`
 - Test one package: `go test ./internal/core/<pkg> -run TestName -v`
 - Tests that need a real display/GPU: `go test -race -tags passbank_display ./...`
@@ -28,14 +28,14 @@ Everything that decides the result (reading and writing KDBX, matching, comparin
 - Format: `gofmt -w cmd internal`
 - Generate: `go generate ./...`
 - Run the CLI: `go run ./cmd/passbank <args>`
-- Run the GUI: `go run ./cmd/passbank-gui` (debug build; it uses your real configuration)
+- Run the GUI: `go run -tags debug_mode ./cmd/passbank-gui` (debug build; it uses your real configuration)
 - Run either isolated from your configuration: `scripts/isolated.sh -- go run ./cmd/<passbank|passbank-gui> <args>`
 - Make a proof screenshot of the GUI: `scripts/proof.sh <out.png> [--after <duration>] -- <passbank-gui args>` (docs/IMPLEMENTATION.md "Proof methods")
-- Release builds: `go build ./cmd/passbank` and `go build -tags glutter_release ./cmd/passbank-gui`
+- Release builds: `go build ./cmd/passbank` and `go build ./cmd/passbank-gui` (a build without tags is a release build of Glutter)
 - After changing dependencies: `go mod tidy`
 
 ## Definition of done
-Before reporting a task as finished, run `gofmt` (on `cmd` and `internal`), `go vet ./...`, `golangci-lint run` and `go test -race ./...`, and fix anything they report. Say so explicitly if any step was skipped or failed. Also:
+Before reporting a task as finished, run `gofmt` (on `cmd` and `internal`), `go vet ./...`, `golangci-lint run` and `go test -race -tags debug_mode ./...`, and fix anything they report. Say so explicitly if any step was skipped or failed. Also:
 - `CGO_ENABLED=0 go build ./...` and `CGO_ENABLED=0 go test ./...` pass (proves the app stays cgo-free)
 - `scripts/error-tags.sh --untested` prints nothing (every error Tag has a test that asserts its route; `docs/ERROR-TAGS-UNTESTED.md` is the only exception list)
 - Every new exported identifier has a doc comment
@@ -135,7 +135,7 @@ Use `github.com/rm4n0s/errors` for all errors. Never use `fmt.Errorf`, and never
 
 ## Memory (OOM)
 A run that uses too much memory is killed by the OS (exit 137) and takes the session with it. Be careful:
-- Run the race tests with `GOMEMLIMIT=3GiB go test -race -p 2 ./...`. At most two heavy test or build commands run at the same time on this machine (30 GB, 32 CPUs), counting those of every other session on this machine; real-input display tests and timing measurements run alone. `scripts/heavy.sh -- <command>` enforces it: it waits for one of two machine-wide slots, and `scripts/heavy.sh --alone -- <command>` takes both. Run every full test run (`./...`), `golangci-lint run`, release build and display or timing run through it
+- Run the race tests with `GOMEMLIMIT=3GiB go test -race -p 2 -tags debug_mode ./...`. At most two heavy test or build commands run at the same time on this machine (30 GB, 32 CPUs), counting those of every other session on this machine; real-input display tests and timing measurements run alone. `scripts/heavy.sh -- <command>` enforces it: it waits for one of two machine-wide slots, and `scripts/heavy.sh --alone -- <command>` takes both. Run every full test run (`./...`), `golangci-lint run`, release build and display or timing run through it
 - Never run Go fuzzing (`-fuzz`) without `-parallel=1`, a short `-fuzztime` (30s at most) and a memory limit (`GOMEMLIMIT=2GiB`, `ulimit -v`); each fuzz worker grows its own memory. Prefer the seed corpus and seeded random tests
 - Run the tests of one package while working; run `./...` only for the final checks
 - Tests, proofs and scripts that start compositors or the app run under `timeout -k`, and a test that builds big inputs keeps them bounded

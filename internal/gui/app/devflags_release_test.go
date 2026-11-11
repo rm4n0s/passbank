@@ -1,4 +1,4 @@
-//go:build glutter_release
+//go:build !debug_mode
 
 package app
 
@@ -10,7 +10,7 @@ import (
 )
 
 // A release build does not have the --dev flags: the flag package refuses them.
-// Run with: go test -tags glutter_release ./internal/gui/app
+// A plain go test runs it: a build without tags is a release build (Glutter 1.17).
 func TestDevFlagsAreAbsentInAReleaseBuild(t *testing.T) {
 	for _, flagName := range []string{"--dev-a", "--dev-b", "--dev-password-file"} {
 		var out, errs bytes.Buffer

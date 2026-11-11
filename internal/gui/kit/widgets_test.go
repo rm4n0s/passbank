@@ -161,6 +161,11 @@ func TestFieldTableMasksAndResets(t *testing.T) {
 }
 
 func TestFieldTableSemanticsNeverHoldAProtectedValue(t *testing.T) {
+	// gluttertest's semantics finders read RenderObject.DebugSemantics, which only a debug build keeps (Flutter's
+	// debugSemantics): in a release build, the default since Glutter 1.17, the first check would pass without looking.
+	if !foundation.DebugMode {
+		t.Skip("the semantics finders need a debug build of Glutter: go test -tags debug_mode")
+	}
 	ts := pump(t, kit.LightTheme(), ui.Size{Width: 700, Height: 300}, kit.NewFieldTable(fieldRows(), "A", "B", "k"))
 	h := ts.EnsureSemantics()
 	defer h.Dispose()

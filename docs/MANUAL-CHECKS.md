@@ -87,7 +87,7 @@ file without being told, but run everything on copies in a scratch folder anyway
 
    ```
    go build -o ~/passbank-scratch/passbank ./cmd/passbank
-   go build -tags glutter_release -o ~/passbank-scratch/passbank-gui ./cmd/passbank-gui
+   go build -o ~/passbank-scratch/passbank-gui ./cmd/passbank-gui
    cd ~/passbank-scratch
    ./passbank info a.kdbx
    ./passbank info b.kdbx

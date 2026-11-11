@@ -16,7 +16,7 @@ import (
 
 // DevOptions preload the two databases for display tests and proof screenshots. The
 // flags that fill them (--dev-a, --dev-b, --dev-password-file) exist only in debug
-// builds, never in a build with the glutter_release tag, and no build takes a
+// builds (-tags debug_mode), never in a release build, and no build takes a
 // password as an argument: the password file holds the passwords of test
 // fixtures.
 type DevOptions struct {

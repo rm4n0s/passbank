@@ -21,7 +21,7 @@ Passbank needs Go 1.27 or later and no C compiler (it is cgo-free).
 
 ```
 go install github.com/rm4n0s/passbank/cmd/passbank@latest
-go install -tags glutter_release github.com/rm4n0s/passbank/cmd/passbank-gui@latest
+go install github.com/rm4n0s/passbank/cmd/passbank-gui@latest
 ```
 
 The GUI needs a Wayland or X11 desktop with Vulkan or OpenGL ES 3.0 drivers. `passbank --version` and `passbank-gui --version` print the module version and the commit the binary was built from.
@@ -132,7 +132,7 @@ scripts/checks.sh                # all the checks, through scripts/heavy.sh
 
 Tests that need KeePassXC (`-tags passbank_keepassxc`), a display (`-tags passbank_display`) or a long run (`-tags passbank_large`) are described in [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md). The specification is [docs/SPEC.md](docs/SPEC.md), the plan [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) and what was built, step by step, [docs/IMPLEMENTED.md](docs/IMPLEMENTED.md).
 
-Release builds: `go build ./cmd/passbank` and `go build -tags glutter_release ./cmd/passbank-gui`. The debug build of the GUI has three flags (`--dev-a`, `--dev-b`, `--dev-password-file`) that preload test fixtures for display tests; a release build does not have them.
+Release builds: `go build ./cmd/passbank` and `go build ./cmd/passbank-gui` (a build without tags is a release build of Glutter; `-tags debug_mode` makes a debug build). The debug build of the GUI has three flags (`--dev-a`, `--dev-b`, `--dev-password-file`) that preload test fixtures for display tests; a release build does not have them.
 
 ## License
 

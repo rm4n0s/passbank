@@ -64,7 +64,8 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 echo "proof: building"
-go build -o "$tmp/passbank-gui" ./cmd/passbank-gui
+# A debug build (-tags debug_mode): the --dev flags of the proofs exist only there.
+go build -tags debug_mode -o "$tmp/passbank-gui" ./cmd/passbank-gui
 
 rm -f "$out"
 
