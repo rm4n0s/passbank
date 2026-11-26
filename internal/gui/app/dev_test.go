@@ -189,7 +189,7 @@ func (l *logBuffer) errorsAbout(t *testing.T, dir string) []errors.ErrorJson {
 
 // TestPreloadLogsEachFailure checks that both failed unlocks of the preload are
 // logged, each with its whole route: the unlocking runs in a goroutine, and
-// errors.Async, called by preload on the UI thread, starts the routes there.
+// State.GoErr, called by preload on the UI thread, starts the routes there.
 func TestPreloadLogsEachFailure(t *testing.T) {
 	logs := &logBuffer{}
 	prev := slog.Default()
@@ -213,7 +213,7 @@ func TestPreloadLogsEachFailure(t *testing.T) {
 		if got[i].Metadata["path"] != want {
 			t.Errorf("logged failure %d is about %v, want %s", i, got[i].Metadata["path"], want)
 		}
-		if route := "appState.InitState->appState.preload->appState.preload.func1->Unlock->ReadFile->readDatabaseFile.FileReadFailed"; !got[i].HasRoute(route) {
+		if route := "appState.InitState->appState.preload->StateOf[...].GoErr->StateOf[...].GoErr.func1->appState.preload.func1->Unlock->ReadFile->readDatabaseFile.FileReadFailed"; !got[i].HasRoute(route) {
 			t.Errorf("logged failure %d: unexpected failure path: %s (want %s)", i, got[i].Route(), route)
 		}
 	}

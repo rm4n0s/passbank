@@ -403,9 +403,9 @@ func TestWriteInAMissingFolder(t *testing.T) {
 	if !h.ts.Exists(gluttertest.ByTextContaining("merged.kdbx cannot be written")) {
 		t.Errorf("banner: %q", h.banner("The database was not written"))
 	}
-	// The write runs in a goroutine; errors.Async, called by begin on the UI thread,
+	// The write runs in a goroutine; State.GoErr, called by begin on the UI thread,
 	// starts the route there.
-	assertRoute(t, h.state().outcome.err, "screenState.startWrite->screenState.begin->screenState.begin.func2->Write->write.OutputTempFailed")
+	assertRoute(t, h.state().outcome.err, "screenState.startWrite->screenState.begin->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.begin.func2->Write->write.OutputTempFailed")
 }
 
 func TestWriteWithAMissingKeyFile(t *testing.T) {
@@ -416,7 +416,7 @@ func TestWriteWithAMissingKeyFile(t *testing.T) {
 	h.ts.PumpAndSettle()
 	h.press("Write")
 	h.waitWritten()
-	assertRoute(t, h.state().outcome.err, "screenState.startWrite->screenState.begin->screenState.begin.func2->ReadKeyFile.KeyFileReadFailed")
+	assertRoute(t, h.state().outcome.err, "screenState.startWrite->screenState.begin->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.begin.func2->ReadKeyFile.KeyFileReadFailed")
 }
 
 func TestPlanThatCannotBeApplied(t *testing.T) {
@@ -441,12 +441,12 @@ func TestFileDialogsWithoutAFileChooser(t *testing.T) {
 		// choose is which Choose… button is pressed: 0 for the new database, 1 for the
 		// key file of the new credentials.
 		choose int
-		// route is the whole route across the goroutine of the dialog: errors.Async,
+		// route is the whole route across the goroutine of the dialog: State.GoErr,
 		// called on the UI thread, starts it at the function that opens the dialog.
 		route string
 	}{
-		{"the new database", 0, "screenState.choosePath->screenState.choosePath.func1->SaveFile->call.chooseFiles.FileChooserUnavailable"},
-		{"the key file", 1, "screenState.chooseKeyFile->screenState.chooseKeyFile.func1->OpenFiles->call.chooseFiles.FileChooserUnavailable"},
+		{"the new database", 0, "screenState.choosePath->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.choosePath.func1->SaveFile->call.chooseFiles.FileChooserUnavailable"},
+		{"the key file", 1, "screenState.chooseKeyFile->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.chooseKeyFile.func1->OpenFiles->call.chooseFiles.FileChooserUnavailable"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

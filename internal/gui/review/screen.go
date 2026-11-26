@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/rm4n0s/errors"
 	"github.com/rm4n0s/glutter/desktop"
 	"github.com/rm4n0s/glutter/foundation"
 	"github.com/rm4n0s/glutter/painting"
@@ -326,13 +325,12 @@ const planFileName = "passbank-plan.txt"
 func (s *screenState) loadPlan() {
 	m, sess, bc := s.model, s.Widget().sess, s.Context()
 	s.SetState(func() { s.busy, s.note = true, nil })
-	// The work is handed off through errors.Async here, on the UI thread, so the
-	// route of its error starts at loadPlan. ctx is the context Go gives its function.
-	ctx := s.Lifetime()
+	// GoErr hands the work off through errors.Async on the UI thread, so the route of
+	// its error starts at loadPlan.
 	var res desktop.FilesResult
 	var loaded *plan.Plan
 	path := ""
-	load := errors.Async(func() (err error) {
+	s.GoErr(func(ctx context.Context) (err error) {
 		res, err = desktop.OpenFiles(ctx, bc, desktop.OpenFilesOpts{Title: "Load a plan"})
 		if err != nil || res.Cancelled || len(res.Paths) == 0 {
 			return err
@@ -340,9 +338,7 @@ func (s *screenState) loadPlan() {
 		path = res.Paths[0]
 		loaded, err = plan.ReadFile(ctx, path, sess.A.PlanInput(), sess.B.PlanInput(), m.Plan().Changes)
 		return err
-	})
-	s.Go(func(context.Context) {
-		err := load()
+	}, func(err error) {
 		if err == nil && (res.Cancelled || len(res.Paths) == 0) {
 			s.SetState(func() { s.busy = false })
 			return
@@ -374,12 +370,11 @@ func (s *screenState) savePlan() {
 	data := text.Bytes()
 	a, b := sess.A.Path, sess.B.Path
 	s.SetState(func() { s.busy, s.note = true, nil })
-	// Handed off through errors.Async on the UI thread, so the route of an error
-	// starts at savePlan.
-	ctx := s.Lifetime()
+	// GoErr hands the work off through errors.Async on the UI thread, so the route of
+	// an error starts at savePlan.
 	var res desktop.FilesResult
 	path := planFileName
-	save := errors.Async(func() (err error) {
+	s.GoErr(func(ctx context.Context) (err error) {
 		res, err = desktop.SaveFile(ctx, bc, desktop.SaveFileOpts{Title: "Save the plan", CurrentName: planFileName})
 		if err != nil || res.Cancelled || len(res.Paths) == 0 {
 			return err
@@ -389,9 +384,7 @@ func (s *screenState) savePlan() {
 			return err
 		}
 		return plan.WriteFile(ctx, path, data, true)
-	})
-	s.Go(func(context.Context) {
-		err := save()
+	}, func(err error) {
 		if err == nil && (res.Cancelled || len(res.Paths) == 0) {
 			s.SetState(func() { s.busy = false })
 			return

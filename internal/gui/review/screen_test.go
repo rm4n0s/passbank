@@ -693,20 +693,20 @@ func TestScreenPlanFileErrors(t *testing.T) {
 		path   func(h *harness) string
 		want   string
 		// route is the whole route across the goroutine of the plan action:
-		// errors.Async, called by loadPlan or savePlan on the UI thread, starts it there.
+		// State.GoErr, called by loadPlan or savePlan on the UI thread, starts it there.
 		route string
 	}{
 		{"load a file that is no plan", "Load plan…", func(*harness) string { return write("junk", "hello\n") },
-			`The plan was not loaded: the plan, line 1: the first line must be "passbank-plan 1"`, "screenState.loadPlan->screenState.loadPlan.func2->ReadFile->Read.PlanSyntax"},
+			`The plan was not loaded: the plan, line 1: the first line must be "passbank-plan 1"`, "screenState.loadPlan->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.loadPlan.func2->ReadFile->Read.PlanSyntax"},
 		{"load a plan of other databases", "Load plan…", func(*harness) string { return write("stale", stale.String()) },
-			"The plan was not loaded: the plan was not made for these databases: input A has changed since", "screenState.loadPlan->screenState.loadPlan.func2->ReadFile->Read.PlanStale"},
+			"The plan was not loaded: the plan was not made for these databases: input A has changed since", "screenState.loadPlan->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.loadPlan.func2->ReadFile->Read.PlanStale"},
 		{"load a missing file", "Load plan…", func(*harness) string { return filepath.Join(dir, "missing") },
-			"The plan was not loaded: missing cannot be read:", "screenState.loadPlan->screenState.loadPlan.func2->ReadFile.PlanFileReadFailed"},
+			"The plan was not loaded: missing cannot be read:", "screenState.loadPlan->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.loadPlan.func2->ReadFile.PlanFileReadFailed"},
 		{"save over database A", "Save plan…", func(h *harness) string {
 			return write("a-copy.kdbx", "x") // replaced below by the path of A
-		}, "", "screenState.savePlan->screenState.savePlan.func3->CheckPath.PlanOutputIsInput"},
+		}, "", "screenState.savePlan->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.savePlan.func3->CheckPath.PlanOutputIsInput"},
 		{"save in a missing folder", "Save plan…", func(*harness) string { return filepath.Join(dir, "no", "plan.txt") },
-			"The plan was not saved: plan.txt cannot be written:", "screenState.savePlan->screenState.savePlan.func3->WriteFile.PlanFileWriteFailed"},
+			"The plan was not saved: plan.txt cannot be written:", "screenState.savePlan->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.savePlan.func3->WriteFile.PlanFileWriteFailed"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
