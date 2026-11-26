@@ -403,6 +403,71 @@ func TestWriteInAMissingFolder(t *testing.T) {
 	if !h.ts.Exists(gluttertest.ByTextContaining("merged.kdbx cannot be written")) {
 		t.Errorf("banner: %q", h.banner("The database was not written"))
 	}
+	// The write runs in a goroutine; errors.Async, called by begin on the UI thread,
+	// starts the route there.
+	assertRoute(t, h.state().outcome.err, "screenState.startWrite->screenState.begin->screenState.begin.func2->Write->write.OutputTempFailed")
+}
+
+func TestWriteWithAMissingKeyFile(t *testing.T) {
+	h := newHarness(t, kit.LightTheme(), newSession(t))
+	h.setPath(filepath.Join(t.TempDir(), "merged.kdbx"))
+	h.choose("Credentials", "New")
+	h.state().keyFile.SetText(filepath.Join(t.TempDir(), "missing.key"))
+	h.ts.PumpAndSettle()
+	h.press("Write")
+	h.waitWritten()
+	assertRoute(t, h.state().outcome.err, "screenState.startWrite->screenState.begin->screenState.begin.func2->ReadKeyFile.KeyFileReadFailed")
+}
+
+func TestPlanThatCannotBeApplied(t *testing.T) {
+	sess := newSession(t)
+	sess.Plan.Choices[0] = plan.Choice("no-such-choice")
+	h := newHarness(t, kit.LightTheme(), sess)
+	r := h.state().result()
+	if r.db != nil {
+		t.Fatal("a plan that cannot be applied gave a result")
+	}
+	if h.button("Write").Enabled() {
+		t.Error("Write is enabled without a result")
+	}
+	// merge.Apply runs in a goroutine; errors.Async, called by build on the UI thread,
+	// starts the route there.
+	assertRoute(t, r.err, "screenState.InitState->screenState.build->screenState.build.func1->Apply->Validate.PlanInvalidChoice")
+}
+
+func TestFileDialogsWithoutAFileChooser(t *testing.T) {
+	tests := []struct {
+		name string
+		// choose is which Choose… button is pressed: 0 for the new database, 1 for the
+		// key file of the new credentials.
+		choose int
+		// route is the whole route across the goroutine of the dialog: errors.Async,
+		// called on the UI thread, starts it at the function that opens the dialog.
+		route string
+	}{
+		{"the new database", 0, "screenState.choosePath->screenState.choosePath.func1->SaveFile->call.chooseFiles.FileChooserUnavailable"},
+		{"the key file", 1, "screenState.chooseKeyFile->screenState.chooseKeyFile.func1->OpenFiles->call.chooseFiles.FileChooserUnavailable"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := newHarness(t, kit.LightTheme(), newSession(t))
+			h.choose("Credentials", "New")
+			h.fd.DisableFileChooser()
+			var buttons []*kit.Button
+			for _, e := range h.ts.Elements(gluttertest.ByType[*kit.Button]()) {
+				if b := e.Widget().(*kit.Button); b.Label() == "Choose…" {
+					buttons = append(buttons, b)
+				}
+			}
+			if len(buttons) != 2 {
+				t.Fatalf("%d Choose… buttons, want 2", len(buttons))
+			}
+			h.ts.Tap(gluttertest.ByWidget(buttons[tt.choose]))
+			h.ts.PumpAndSettle()
+			h.waitFor("an error", func() bool { return h.state().err != nil })
+			assertRoute(t, h.state().err, tt.route)
+		})
+	}
 }
 
 func TestNewCredentials(t *testing.T) {
@@ -616,3 +681,15 @@ func TestSuccessGolden(t *testing.T) {
 }
 
 func errorWithTag(tag string) error { return errors.New(tag, "x") }
+
+// assertRoute fails the test unless err is an *errors.Error whose route contains route.
+func assertRoute(t *testing.T, err error, route string) {
+	t.Helper()
+	appErr, ok := errors.FromError(err)
+	if !ok {
+		t.Fatalf("expected *errors.Error, got %T: %v", err, err)
+	}
+	if !appErr.HasRoute(route) {
+		t.Errorf("unexpected failure path: %s (want %s)", appErr.Route(), route)
+	}
+}

@@ -189,10 +189,17 @@ func (s *screenState) build() {
 	s.gen++
 	gen := s.gen
 	s.mu.Unlock()
+	// Handed off through errors.Async on the UI thread, so the route of an error
+	// starts at build.
+	var res *model.Database
+	apply := errors.Async(func() (err error) {
+		res, err = merge.Apply(a, b, &p)
+		return err
+	})
 	s.work.Add(1)
 	s.Go(func(ctx context.Context) {
 		defer s.work.Done()
-		res, err := merge.Apply(a, b, &p)
+		err := apply()
 		r := &built{db: res, err: err}
 		if res != nil {
 			res.WalkGroups(func(g *model.Group) bool { r.groups++; r.entries += len(g.Entries); return true })
@@ -545,8 +552,16 @@ func (s *screenState) choosePath() {
 	if cur := strings.TrimSpace(s.path.Text()); cur != "" {
 		opts.CurrentFolder, opts.CurrentName = filepath.Dir(cur), filepath.Base(cur)
 	}
-	s.Go(func(ctx context.Context) {
-		res, err := desktop.SaveFile(ctx, bc, opts)
+	// Handed off through errors.Async on the UI thread, so the route of an error
+	// starts at choosePath. ctx is the context Go gives its function.
+	ctx := s.Lifetime()
+	var res desktop.FilesResult
+	pick := errors.Async(func() (err error) {
+		res, err = desktop.SaveFile(ctx, bc, opts)
+		return err
+	})
+	s.Go(func(context.Context) {
+		err := pick()
 		s.SetState(func() {
 			switch {
 			case err != nil:
@@ -563,8 +578,16 @@ func (s *screenState) choosePath() {
 // chooseKeyFile opens the dialog for the key file of the new credentials.
 func (s *screenState) chooseKeyFile() {
 	bc := s.Context()
-	s.Go(func(ctx context.Context) {
-		res, err := desktop.OpenFiles(ctx, bc, desktop.OpenFilesOpts{Title: "Choose the key file of the new database"})
+	// Handed off through errors.Async on the UI thread, so the route of an error
+	// starts at chooseKeyFile. ctx is the context Go gives its function.
+	ctx := s.Lifetime()
+	var res desktop.FilesResult
+	pick := errors.Async(func() (err error) {
+		res, err = desktop.OpenFiles(ctx, bc, desktop.OpenFilesOpts{Title: "Choose the key file of the new database"})
+		return err
+	})
+	s.Go(func(context.Context) {
+		err := pick()
 		s.SetState(func() {
 			switch {
 			case err != nil:
@@ -622,25 +645,28 @@ func (s *screenState) begin(losses int) {
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel, s.writing, s.outcome, s.err = cancel, true, nil, nil
 	s.SetState(func() {})
+	// Handed off through errors.Async on the UI thread, so the route of an error
+	// starts at begin.
+	write := errors.Async(func() error {
+		if source == CredentialsNew {
+			defer func() { creds.Wipe() }() // the credentials are made for this write
+			if keyPath != "" {
+				key, err := crypto.ReadKeyFile(ctx, keyPath)
+				if err != nil {
+					return err
+				}
+				creds.HasKeyFile, creds.KeyFile = true, key
+			}
+		}
+		return output.Write(ctx, path, r.db, v, settings, creds, opts)
+	})
 	s.work.Add(1)
 	s.Go(func(parent context.Context) {
 		defer s.work.Done()
 		defer cancel()
 		stop := context.AfterFunc(parent, cancel)
 		defer stop()
-		var err error
-		if source == CredentialsNew {
-			defer func() { creds.Wipe() }() // the credentials are made for this write
-			if keyPath != "" {
-				var key secret.Bytes
-				if key, err = crypto.ReadKeyFile(ctx, keyPath); err == nil {
-					creds.HasKeyFile, creds.KeyFile = true, key
-				}
-			}
-		}
-		if err == nil {
-			err = output.Write(ctx, path, r.db, v, settings, creds, opts)
-		}
+		err := write()
 		s.SetState(func() {
 			s.writing, s.cancel = false, nil
 			if cancelled(err) {

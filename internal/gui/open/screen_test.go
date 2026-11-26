@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/rm4n0s/errors"
 	"github.com/rm4n0s/glutter/gluttertest"
 	"github.com/rm4n0s/glutter/ui"
 	"github.com/rm4n0s/glutter/widgets"
@@ -97,6 +98,18 @@ func (h *harness) unlock(i int, file, password, key string) {
 	h.tap("Unlock", i)
 }
 
+// assertRoute fails the test unless err is an *errors.Error whose route contains route.
+func assertRoute(t *testing.T, err error, route string) {
+	t.Helper()
+	appErr, ok := errors.FromError(err)
+	if !ok {
+		t.Fatalf("expected *errors.Error, got %T: %v", err, err)
+	}
+	if !appErr.HasRoute(route) {
+		t.Errorf("unexpected failure path: %s (want %s)", appErr.Route(), route)
+	}
+}
+
 func TestUnlockShowsTheSummary(t *testing.T) {
 	h := newHarness(t, kit.LightTheme())
 	h.unlock(0, "k4-rich.kdbx", "fixture-rich", "")
@@ -130,12 +143,15 @@ func TestUnlockWithAKeyFile(t *testing.T) {
 func TestUnlockErrors(t *testing.T) {
 	tests := []struct {
 		name, file, password, key, want string
+		// route is the whole route across the goroutine of unlock: errors.Async, called
+		// by unlock on the UI thread, starts it there.
+		route string
 	}{
-		{"a wrong password", "k4-rich.kdbx", "wrong", "", "the password or key file for"},
-		{"no credentials", "k4-rich.kdbx", "", "", "needs a password, a key file, or both"},
-		{"a file that is no database", "keyfile-raw32.key", "x", "", "is not a KeePass database"},
-		{"a missing file", "missing.kdbx", "x", "", "cannot be read"},
-		{"a missing key file", "k4-rich.kdbx", "fixture-rich", "/no/such/key", "key"},
+		{"a wrong password", "k4-rich.kdbx", "wrong", "", "the password or key file for", "screenState.unlock->screenState.unlock.func1->Unlock->OpenBytes->readContainer4.WrongCredentials"},
+		{"no credentials", "k4-rich.kdbx", "", "", "needs a password, a key file, or both", "screenState.unlock->screenState.unlock.func1->Unlock->OpenBytes->CompositeKey.NoCredentials"},
+		{"a file that is no database", "keyfile-raw32.key", "x", "", "is not a KeePass database", "screenState.unlock->screenState.unlock.func1->Unlock->OpenBytes->parseSignature.NotKdbx"},
+		{"a missing file", "missing.kdbx", "x", "", "cannot be read", "screenState.unlock->screenState.unlock.func1->Unlock->ReadFile->readDatabaseFile.FileReadFailed"},
+		{"a missing key file", "k4-rich.kdbx", "fixture-rich", "/no/such/key", "key", "screenState.unlock->screenState.unlock.func1->Unlock->ReadKeyFile.KeyFileReadFailed"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -145,6 +161,7 @@ func TestUnlockErrors(t *testing.T) {
 			if !h.ts.Exists(gluttertest.ByTextContaining(tt.want)) {
 				t.Errorf("the panel does not say %q", tt.want)
 			}
+			assertRoute(t, h.state().panels[0].err, tt.route)
 			if h.sess.A != nil {
 				t.Error("A was unlocked")
 			}
@@ -221,6 +238,8 @@ func TestChooseWithoutAFileChooser(t *testing.T) {
 	if h.sess.A != nil || h.state().panels[0].path.Text() != "" {
 		t.Error("the panel changed")
 	}
+	// The dialog runs in a goroutine; errors.Async starts the route at choose.
+	assertRoute(t, h.state().panels[0].err, "screenState.choose->screenState.choose.func1->OpenFiles->call.chooseFiles.FileChooserUnavailable")
 }
 
 func TestEditingThePathLocksTheSideAgain(t *testing.T) {

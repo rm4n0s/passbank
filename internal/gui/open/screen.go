@@ -124,8 +124,16 @@ func (s *screenState) choose(i int, keyFile bool) {
 	} else {
 		opts.Filters = []desktop.FileFilter{kdbxFilter}
 	}
-	s.Go(func(ctx context.Context) {
-		res, err := desktop.OpenFiles(ctx, bc, opts)
+	// The dialog is handed off through errors.Async here, on the UI thread, so the
+	// route of its error starts at choose. ctx is the context Go gives its function.
+	ctx := s.Lifetime()
+	var res desktop.FilesResult
+	pick := errors.Async(func() (err error) {
+		res, err = desktop.OpenFiles(ctx, bc, opts)
+		return err
+	})
+	s.Go(func(context.Context) {
+		err := pick()
 		s.SetState(func() {
 			switch {
 			case err != nil:
@@ -158,11 +166,18 @@ func (s *screenState) unlock(i int) {
 	password := secret.New([]byte(p.password.Text()))
 	ctx, cancel := context.WithCancel(context.Background())
 	p.unlocking, p.cancel, p.err = true, cancel, nil
+	// Handed off through errors.Async on the UI thread, so the route of an error
+	// starts at unlock.
+	var src *session.Source
+	open := errors.Async(func() (err error) {
+		src, err = session.Unlock(ctx, path, password, keyPath)
+		return err
+	})
 	s.Go(func(parent context.Context) {
 		defer cancel()
 		stop := context.AfterFunc(parent, cancel)
 		defer stop()
-		src, err := session.Unlock(ctx, path, password, keyPath)
+		err := open()
 		s.SetState(func() {
 			p.unlocking, p.cancel = false, nil
 			if err != nil {

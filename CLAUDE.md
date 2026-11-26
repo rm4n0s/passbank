@@ -71,7 +71,7 @@ Before reporting a task as finished, run `gofmt` (on `cmd` and `internal`), `go 
 - Read Glutter's source in the Go module cache when its behavior is unclear; its `docs/SPEC.md` describes its design
 
 ## Error handling
-Use `github.com/rm4n0s/errors` for all errors. Never use `fmt.Errorf`, and never import the standard library `errors` package: this package re-exports `errors.Is`, `errors.As` and `errors.Unwrap`, so a single import covers everything. Read `AI_GUIDE.md` of github.com/rm4n0s/errors (in the Go module cache: `go list -m -f '{{.Dir}}' github.com/rm4n0s/errors`) before writing error code.
+Use `github.com/rm4n0s/errors` for all errors. Never use `fmt.Errorf`, and never import the standard library `errors` package: this package re-exports `errors.Is`, `errors.As`, `errors.Unwrap` and `errors.Join`, so a single import covers everything. Read `AI_GUIDE.md` of github.com/rm4n0s/errors (in the Go module cache: `go list -m -f '{{.Dir}}' github.com/rm4n0s/errors`) before writing error code.
 
 **Creating errors**
 - New failure with a fixed message: `errors.New("Tag", "message", "key", value, ...)` (all metadata in this one call, never `New(...).SetMetadata(...)`)
@@ -89,6 +89,27 @@ Use `github.com/rm4n0s/errors` for all errors. Never use `fmt.Errorf`, and never
 - Functions return the plain `error` interface, never `*errors.Error` (avoids the non-nil-interface-holding-nil-pointer bug)
 - `errors.FromError(err)` is a plain type assertion. It fails if something else wrapped the error, so don't wrap these errors with anything
 
+**Errors across goroutines**
+- A goroutine's stack does not contain the function that started it, so an error created there has a route with no parent. Hand the work off through `errors.Async`, called in the goroutine that starts the work (in the GUI: on the UI thread, just before `State.Go`), and run the returned function inside the goroutine. An `*Error` returned by it gets the route of the `Async` call site: `screenState.unlock->screenState.unlock.func1->Unlock->ReadFile->readDatabaseFile.FileReadFailed`
+  ```go
+  ctx := s.Lifetime() // the context that State.Go gives its function
+  var src *session.Source
+  open := errors.Async(func() (err error) {
+      src, err = session.Unlock(ctx, path, password, keyPath)
+      return err
+  })
+  s.Go(func(context.Context) {
+      err := open()
+      s.SetState(func() { /* show src or err */ })
+  })
+  ```
+  - Never call `Async` inside the goroutine (`go func() { errors.Async(work)() }()`): it records the child's stack and the parent is lost. For a worker pool or a queue, call it where the job is submitted
+  - The function must **return** the error; an error sent on a channel or stored from inside it does not pass through `Async`. Results other than the error are assigned to variables from inside the closure
+  - Goroutines whose errors never leave them (the Argon2 run in `crypto.KDF`, the lanes of `internal/third_party/argon2`) need nothing
+- `errors.AsyncRecover` also turns a panic in the function into an `*Error` with the Tag `errors.TagPanic`. Use it only where a spec or a step asks for it: it changes a crash into an error. `State.Go` already recovers a panic and reports it as Glutter's `CallbackPanicked`, so the GUI does not use it
+- When several failures come back together, return them with `errors.Join` and read them with `errors.All(err)`, which returns every `*Error` in a joined or wrapped error, outermost first. `errors.FromError` does not look inside a joined error (it returns `ok=false`)
+- An `*Error` is not safe for concurrent use: never call `SetMetadata`, `RemoveMetadata` or `SetMessage` on an error that another goroutine can still reach
+
 **Inspecting errors**
 - `appErr, ok := errors.FromError(err)`, then use `appErr.Tag`, `appErr.Metadata`, `appErr.Message`
 - Use `errors.Is` / `errors.As` / `errors.Unwrap` for the underlying cause stored in `OriginalErr`
@@ -104,7 +125,8 @@ Use `github.com/rm4n0s/errors` for all errors. Never use `fmt.Errorf`, and never
       t.Errorf("unexpected failure path: %s", appErr.Route())
   }
   ```
-- A route lists the call chain from outermost to innermost (`Type.Method` or `Func`, joined by `->`) and ends with the Tag. `HasRoute` matches by substring
+- A route lists the call chain from outermost to innermost (`Type.Method` or `Func`, joined by `->`) and ends with the Tag. `HasRoute` matches by substring. Frames of the Go runtime (`goexit`, `main`, `gopanic`) never appear in it; `StackFrames(true)` and `StackTrace()` still show them
+- An error that crosses a goroutine through `errors.Async` gets a test that asserts the whole route across the boundary, from the function that called `Async` down to the Tag (`screenState.begin->screenState.begin.func2->Write->write.OutputTempFailed`). A joined error is checked with one `HasRoute` per element of `errors.All(err)`
 - Log errors with `slog`, passing the error as an attribute (`l.Error("failed", "err", err)`): `*errors.Error` is a `slog.LogValuer`, so the log gets the Tag, Route, Metadata and stack frames, and the logged object can be replayed in a test via `errors.ErrorJson` and `errors.FromJson`. Do not call `ToJson` or `json.Marshal` on an error yourself
 
 ## Git and GitHub

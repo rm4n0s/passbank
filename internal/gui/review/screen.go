@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/rm4n0s/errors"
 	"github.com/rm4n0s/glutter/desktop"
 	"github.com/rm4n0s/glutter/foundation"
 	"github.com/rm4n0s/glutter/painting"
@@ -61,6 +62,9 @@ type screenState struct {
 type note struct {
 	kind kit.BannerKind
 	text string
+	// err is the failure an error note reports, kept so that tests can check its
+	// route; nil for other notes.
+	err error
 }
 
 func (s *screenState) InitState() {
@@ -322,26 +326,35 @@ const planFileName = "passbank-plan.txt"
 func (s *screenState) loadPlan() {
 	m, sess, bc := s.model, s.Widget().sess, s.Context()
 	s.SetState(func() { s.busy, s.note = true, nil })
-	s.Go(func(ctx context.Context) {
-		res, err := desktop.OpenFiles(ctx, bc, desktop.OpenFilesOpts{Title: "Load a plan"})
+	// The work is handed off through errors.Async here, on the UI thread, so the
+	// route of its error starts at loadPlan. ctx is the context Go gives its function.
+	ctx := s.Lifetime()
+	var res desktop.FilesResult
+	var loaded *plan.Plan
+	path := ""
+	load := errors.Async(func() (err error) {
+		res, err = desktop.OpenFiles(ctx, bc, desktop.OpenFilesOpts{Title: "Load a plan"})
+		if err != nil || res.Cancelled || len(res.Paths) == 0 {
+			return err
+		}
+		path = res.Paths[0]
+		loaded, err = plan.ReadFile(ctx, path, sess.A.PlanInput(), sess.B.PlanInput(), m.Plan().Changes)
+		return err
+	})
+	s.Go(func(context.Context) {
+		err := load()
 		if err == nil && (res.Cancelled || len(res.Paths) == 0) {
 			s.SetState(func() { s.busy = false })
 			return
 		}
-		var loaded *plan.Plan
-		path := ""
-		if err == nil {
-			path = res.Paths[0]
-			loaded, err = plan.ReadFile(ctx, path, sess.A.PlanInput(), sess.B.PlanInput(), m.Plan().Changes)
-		}
 		s.SetState(func() {
 			s.busy = false
 			if err != nil {
-				s.note = &note{kit.ErrorBanner, "The plan was not loaded: " + message.Of(err, filepath.Base(path), message.GUI)}
+				s.note = &note{kit.ErrorBanner, "The plan was not loaded: " + message.Of(err, filepath.Base(path), message.GUI), err}
 				return
 			}
 			m.Replace(loaded.Choices)
-			s.note = &note{kit.SuccessBanner, "Loaded the choices of " + filepath.Base(path) + "."}
+			s.note = &note{kit.SuccessBanner, "Loaded the choices of " + filepath.Base(path) + ".", nil}
 		})
 	})
 }
@@ -354,33 +367,42 @@ func (s *screenState) savePlan() {
 	var text bytes.Buffer
 	if err := plan.Write(&text, m.Plan(), plan.WriteOptions{}); err != nil {
 		s.SetState(func() {
-			s.note = &note{kit.ErrorBanner, "The plan was not saved: " + message.Of(err, planFileName, message.GUI)}
+			s.note = &note{kit.ErrorBanner, "The plan was not saved: " + message.Of(err, planFileName, message.GUI), err}
 		})
 		return
 	}
 	data := text.Bytes()
 	a, b := sess.A.Path, sess.B.Path
 	s.SetState(func() { s.busy, s.note = true, nil })
-	s.Go(func(ctx context.Context) {
-		res, err := desktop.SaveFile(ctx, bc, desktop.SaveFileOpts{Title: "Save the plan", CurrentName: planFileName})
+	// Handed off through errors.Async on the UI thread, so the route of an error
+	// starts at savePlan.
+	ctx := s.Lifetime()
+	var res desktop.FilesResult
+	path := planFileName
+	save := errors.Async(func() (err error) {
+		res, err = desktop.SaveFile(ctx, bc, desktop.SaveFileOpts{Title: "Save the plan", CurrentName: planFileName})
+		if err != nil || res.Cancelled || len(res.Paths) == 0 {
+			return err
+		}
+		path = res.Paths[0]
+		if err := plan.CheckPath(path, a, b); err != nil {
+			return err
+		}
+		return plan.WriteFile(ctx, path, data, true)
+	})
+	s.Go(func(context.Context) {
+		err := save()
 		if err == nil && (res.Cancelled || len(res.Paths) == 0) {
 			s.SetState(func() { s.busy = false })
 			return
 		}
-		path := planFileName
-		if err == nil {
-			path = res.Paths[0]
-			if err = plan.CheckPath(path, a, b); err == nil {
-				err = plan.WriteFile(ctx, path, data, true)
-			}
-		}
 		s.SetState(func() {
 			s.busy = false
 			if err != nil {
-				s.note = &note{kit.ErrorBanner, "The plan was not saved: " + message.Of(err, filepath.Base(path), message.GUI)}
+				s.note = &note{kit.ErrorBanner, "The plan was not saved: " + message.Of(err, filepath.Base(path), message.GUI), err}
 				return
 			}
-			s.note = &note{kit.SuccessBanner, "Saved the plan to " + filepath.Base(path) + "."}
+			s.note = &note{kit.SuccessBanner, "Saved the plan to " + filepath.Base(path) + ".", nil}
 		})
 	})
 }

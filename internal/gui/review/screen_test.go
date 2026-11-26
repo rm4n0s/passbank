@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/rm4n0s/errors"
 	"github.com/rm4n0s/glutter/gluttertest"
 	"github.com/rm4n0s/glutter/services"
 	"github.com/rm4n0s/glutter/ui"
@@ -23,6 +24,18 @@ import (
 	"github.com/rm4n0s/passbank/internal/gui/session"
 	"github.com/rm4n0s/passbank/internal/gui/testutil"
 )
+
+// assertRoute fails the test unless err is an *errors.Error whose route contains route.
+func assertRoute(t *testing.T, err error, route string) {
+	t.Helper()
+	appErr, ok := errors.FromError(err)
+	if !ok {
+		t.Fatalf("expected *errors.Error, got %T: %v", err, err)
+	}
+	if !appErr.HasRoute(route) {
+		t.Errorf("unexpected failure path: %s (want %s)", appErr.Route(), route)
+	}
+}
 
 // harness is the Review screen in a window, with a session of two databases.
 type harness struct {
@@ -679,18 +692,21 @@ func TestScreenPlanFileErrors(t *testing.T) {
 		button string
 		path   func(h *harness) string
 		want   string
+		// route is the whole route across the goroutine of the plan action:
+		// errors.Async, called by loadPlan or savePlan on the UI thread, starts it there.
+		route string
 	}{
 		{"load a file that is no plan", "Load plan…", func(*harness) string { return write("junk", "hello\n") },
-			`The plan was not loaded: the plan, line 1: the first line must be "passbank-plan 1"`},
+			`The plan was not loaded: the plan, line 1: the first line must be "passbank-plan 1"`, "screenState.loadPlan->screenState.loadPlan.func2->ReadFile->Read.PlanSyntax"},
 		{"load a plan of other databases", "Load plan…", func(*harness) string { return write("stale", stale.String()) },
-			"The plan was not loaded: the plan was not made for these databases: input A has changed since"},
+			"The plan was not loaded: the plan was not made for these databases: input A has changed since", "screenState.loadPlan->screenState.loadPlan.func2->ReadFile->Read.PlanStale"},
 		{"load a missing file", "Load plan…", func(*harness) string { return filepath.Join(dir, "missing") },
-			"The plan was not loaded: missing cannot be read:"},
+			"The plan was not loaded: missing cannot be read:", "screenState.loadPlan->screenState.loadPlan.func2->ReadFile.PlanFileReadFailed"},
 		{"save over database A", "Save plan…", func(h *harness) string {
 			return write("a-copy.kdbx", "x") // replaced below by the path of A
-		}, ""},
+		}, "", "screenState.savePlan->screenState.savePlan.func3->CheckPath.PlanOutputIsInput"},
 		{"save in a missing folder", "Save plan…", func(*harness) string { return filepath.Join(dir, "no", "plan.txt") },
-			"The plan was not saved: plan.txt cannot be written:"},
+			"The plan was not saved: plan.txt cannot be written:", "screenState.savePlan->screenState.savePlan.func3->WriteFile.PlanFileWriteFailed"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -708,6 +724,11 @@ func TestScreenPlanFileErrors(t *testing.T) {
 			h.planDialog(tt.button, path)
 			if got := h.noteText(); !strings.HasPrefix(got, tt.want) {
 				t.Errorf("note = %q, want it to start with %q", got, tt.want)
+			}
+			if n := h.state().note; n == nil {
+				t.Error("no note")
+			} else {
+				assertRoute(t, n.err, tt.route)
 			}
 			if !slices.Equal(h.sess.Plan.Choices, before) {
 				t.Error("a failed plan action changed the choices")

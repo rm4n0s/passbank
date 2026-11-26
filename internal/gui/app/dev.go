@@ -69,16 +69,23 @@ func (s *appState) preload(dev DevOptions) {
 		slog.Error("passbank-gui: cannot preload the databases", "err", err)
 		return
 	}
-	s.Go(func(ctx context.Context) {
-		a, errA := session.Unlock(ctx, dev.A, secret.New([]byte(pa)), "")
-		b, errB := session.Unlock(ctx, dev.B, secret.New([]byte(pb)), "")
-		if errA != nil || errB != nil {
+	// The unlocking is handed off through errors.Async here, on the UI thread, so the
+	// routes of its errors start at preload. Both failures are returned, joined, and
+	// each is logged. ctx is the context Go gives its function.
+	ctx := s.Lifetime()
+	var a, b *session.Source
+	unlock := errors.Async(func() error {
+		var errA, errB error
+		a, errA = session.Unlock(ctx, dev.A, secret.New([]byte(pa)), "")
+		b, errB = session.Unlock(ctx, dev.B, secret.New([]byte(pb)), "")
+		return errors.Join(errA, errB)
+	})
+	s.Go(func(context.Context) {
+		if err := unlock(); err != nil {
 			a.Wipe()
 			b.Wipe()
-			for _, err := range []error{errA, errB} {
-				if err != nil {
-					slog.Error("passbank-gui: cannot preload a database", "err", err)
-				}
+			for _, e := range errors.All(err) {
+				slog.Error("passbank-gui: cannot preload a database", "err", e)
 			}
 			return
 		}

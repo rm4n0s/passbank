@@ -1,10 +1,14 @@
 package app
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/rm4n0s/errors"
@@ -143,6 +147,75 @@ func TestPreloadFailureStaysOnOpen(t *testing.T) {
 	fd.WaitFor("the failed unlock", func() bool { ts2.PumpAndSettle(); return true })
 	if st2.screen != screenOpen || st2.sess.A != nil || st2.sess.B != nil {
 		t.Errorf("a failed unlock left screen %v, A %v, B %v", st2.screen, st2.sess.A != nil, st2.sess.B != nil)
+	}
+}
+
+// logBuffer collects what a slog handler writes, from any goroutine.
+type logBuffer struct {
+	mu  sync.Mutex
+	buf bytes.Buffer
+}
+
+func (l *logBuffer) Write(p []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.buf.Write(p)
+}
+
+// errorsAbout returns the "err" attribute of each record, as errors.ErrorJson, whose
+// path metadata is in dir. Another test's goroutine may still log after that test
+// ended; its records name other paths.
+func (l *logBuffer) errorsAbout(t *testing.T, dir string) []errors.ErrorJson {
+	t.Helper()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	var out []errors.ErrorJson
+	for _, line := range strings.Split(strings.TrimSpace(l.buf.String()), "\n") {
+		if line == "" {
+			continue
+		}
+		var entry struct {
+			Err errors.ErrorJson `json:"err"`
+		}
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			t.Fatalf("log line %q: %v", line, err)
+		}
+		if path, _ := entry.Err.Metadata["path"].(string); filepath.Dir(path) == dir {
+			out = append(out, entry.Err)
+		}
+	}
+	return out
+}
+
+// TestPreloadLogsEachFailure checks that both failed unlocks of the preload are
+// logged, each with its whole route: the unlocking runs in a goroutine, and
+// errors.Async, called by preload on the UI thread, starts the routes there.
+func TestPreloadLogsEachFailure(t *testing.T) {
+	logs := &logBuffer{}
+	prev := slog.Default()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(logs, nil)))
+	t.Cleanup(func() { slog.SetDefault(prev) })
+
+	dev := mergeFixtures(t)
+	dir := t.TempDir()
+	dev.A, dev.B = filepath.Join(dir, "missing-a.kdbx"), filepath.Join(dir, "missing-b.kdbx")
+	ts := testutil.New(t)
+	fd := ts.FakeDesktop()
+	ts.PumpWidget(NewAppWith(dev))
+	ts.PumpAndSettle()
+	fd.WaitFor("two logged failures", func() bool { ts.PumpAndSettle(); return len(logs.errorsAbout(t, dir)) == 2 })
+	st := gluttertest.StateOf[*appState](ts, gluttertest.ByType[*App]())
+	if st.screen != screenOpen || st.sess.A != nil || st.sess.B != nil {
+		t.Errorf("a failed preload left screen %v, A %v, B %v", st.screen, st.sess.A != nil, st.sess.B != nil)
+	}
+	got := logs.errorsAbout(t, dir)
+	for i, want := range []string{dev.A, dev.B} {
+		if got[i].Metadata["path"] != want {
+			t.Errorf("logged failure %d is about %v, want %s", i, got[i].Metadata["path"], want)
+		}
+		if route := "appState.InitState->appState.preload->appState.preload.func1->Unlock->ReadFile->readDatabaseFile.FileReadFailed"; !got[i].HasRoute(route) {
+			t.Errorf("logged failure %d: unexpected failure path: %s (want %s)", i, got[i].Route(), route)
+		}
 	}
 }
 
