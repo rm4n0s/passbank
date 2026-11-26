@@ -4,11 +4,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"github.com/rm4n0s/errors"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/rm4n0s/glutter/foundation"
 	"github.com/rm4n0s/glutter/gluttertest"
 	"github.com/rm4n0s/glutter/ui"
 	"github.com/rm4n0s/glutter/widgets"
@@ -691,5 +694,93 @@ func assertRoute(t *testing.T, err error, route string) {
 	}
 	if !appErr.HasRoute(route) {
 		t.Errorf("unexpected failure path: %s (want %s)", appErr.Route(), route)
+	}
+}
+
+// A screen that is closed while its write runs does not show the failure of the write: State.GoErr
+// has no callback to give it to, and reports it once to the app's error reporter instead, as an
+// error of its own (Glutter 1.17.15). The report is a log entry with the Tag and the route of the
+// failure, and not a crash: the app has no error reporter of its own, so RunApp's default logs it.
+func TestFailureOfWorkOfAClosedScreenIsReportedOnce(t *testing.T) {
+	h := newHarness(t, kit.LightTheme(), newSession(t))
+	h.setPath(filepath.Join(t.TempDir(), "merged.kdbx"))
+	h.choose("Credentials", "New")
+	h.state().keyFile.SetText(filepath.Join(t.TempDir(), "missing.key"))
+	h.ts.PumpAndSettle()
+	s := h.state()
+	s.startWrite() // not a tap: a tap pumps frames, which would run the callback of the work
+	// The work ends with its error before the screen goes, so that it is no cancellation. The
+	// screen goes before the UI thread runs the callback that would have shown the error:
+	// DetachRootWidget disposes it at once, where a PumpWidget runs what was posted first.
+	s.work.Wait()
+	h.ts.Binding.DetachRootWidget()
+	h.ts.PumpAndSettle()
+
+	errs := h.ts.TakeErrors()
+	if len(errs) != 1 {
+		t.Fatalf("%d errors were reported, want 1: %v", len(errs), errs)
+	}
+	report, ok := errors.FromError(errs[0])
+	if !ok || report.Tag != widgets.TagGoErrUndelivered {
+		t.Fatalf("the reported error is %T %v, want the tag %s", errs[0], errs[0], widgets.TagGoErrUndelivered)
+	}
+	if foundation.IsRecoveredPanic(errs[0]) {
+		t.Error("the report is a recovered panic, which a reporter treats as a crash")
+	}
+	if got := report.Metadata["reason"]; got != "disposed" {
+		t.Errorf("reason %v, want disposed", got)
+	}
+	// The error of the work keeps its own Tag and its whole route across the goroutine.
+	all := errors.All(errs[0])
+	if len(all) < 2 {
+		t.Fatalf("errors.All has %d errors, want the report and the original", len(all))
+	}
+	if all[1].Tag != "KeyFileReadFailed" {
+		t.Errorf("the original has the tag %s, want KeyFileReadFailed", all[1].Tag)
+	}
+	const route = "screenState.startWrite->screenState.begin->StateOf[...].GoErr->StateOf[...].GoErr.func1->screenState.begin.func2->ReadKeyFile.KeyFileReadFailed"
+	if !all[1].HasRoute(route) {
+		t.Errorf("unexpected route of the original: %s", all[1].Route())
+	}
+	if h.ts.ExitRequests() != 0 {
+		t.Error("the report asked the app to exit")
+	}
+
+	// The default reporter, which RunWith leaves in place, logs the Tag and the route of the original
+	// in the metadata of the report.
+	originalRoute, _ := report.Metadata["originalRoute"].(string)
+	if report.Metadata["originalTag"] != "KeyFileReadFailed" || !strings.Contains(originalRoute, route) {
+		t.Errorf("metadata originalTag %v, originalRoute %q", report.Metadata["originalTag"], originalRoute)
+	}
+	var log strings.Builder
+	widgets.DefaultErrorReporter(slog.New(slog.NewJSONHandler(&log, nil)))(errs[0])
+	for _, want := range []string{`"originalTag":"KeyFileReadFailed"`, `"originalRoute":"` + originalRoute + `"`} {
+		if !strings.Contains(log.String(), want) {
+			t.Errorf("the log entry does not contain %s:\n%s", want, log.String())
+		}
+	}
+}
+
+// A write that ends because its screen was closed ends with the cancellation of the context, which
+// is no failure: nothing is reported.
+func TestCancellationOfWorkOfAClosedScreenIsNotReported(t *testing.T) {
+	// A key derivation that takes seconds, so that the screen goes in the middle of it.
+	h := newHarness(t, kit.LightTheme(), newSession(t, func(a, _ *session.Source) {
+		a.Info.KDF = crypto.KDF{ID: crypto.KDFArgon2id, Memory: 256 << 20, Iterations: 400, Parallelism: 1, Version: crypto.Argon2Version}
+	}))
+	out := filepath.Join(t.TempDir(), "merged.kdbx")
+	h.setPath(out)
+	h.choose("Encryption", "As A")
+	h.press("Write")
+	h.waitFor("the write to start", func() bool { return h.state().writing })
+	h.ts.PumpWidget(widgets.NewSizedBox(nil)) // Dispose cancels the write and waits for it
+	// The callback of the work runs on the UI thread after the work ended.
+	time.Sleep(50 * time.Millisecond)
+	h.ts.PumpAndSettle()
+	if errs := h.ts.TakeErrors(); len(errs) != 0 {
+		t.Errorf("a cancelled write was reported: %v", errs)
+	}
+	if _, err := os.Stat(out); err == nil {
+		t.Error("the cancelled write left a file")
 	}
 }
