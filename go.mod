@@ -2,6 +2,8 @@ module github.com/rm4n0s/passbank
 
 go 1.27.3
 
+toolchain go1.27.4
+
 require (
 	github.com/rm4n0s/errors v0.3.1
 	github.com/rm4n0s/glutter v1.17.15
