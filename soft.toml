@@ -1,0 +1,12 @@
+# Passbank's desktop application, for Soft (github.com/rm4n0s/soft): when Soft installs
+# passbank-gui, it gets a menu entry. passbank, the command line, installs as a command-line
+# program. Passbank has no icon yet: add one here (icon = "...") when it has.
+
+[[app]]
+cmd        = "./cmd/passbank-gui"
+name       = "Passbank"
+comment    = "Merge two KeePass databases into a new one"
+categories = ["Utility", "Security"]
+keywords   = ["keepass", "kdbx", "password", "merge"]
+id         = "dev.rm4n0s.Passbank"
+wm-class   = "dev.rm4n0s.Passbank"
